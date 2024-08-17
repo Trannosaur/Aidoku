@@ -11,7 +11,7 @@ import Nuke
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    static let isSideloaded = Bundle.main.bundleIdentifier != "xyz.skitty.Aidoku"
+    static let isSideloaded = false //Bundle.main.bundleIdentifier != "xyz.skitty.Aidoku"
     private var networkObserverId: UUID?
 
     private lazy var loadingAlert: UIAlertController = {

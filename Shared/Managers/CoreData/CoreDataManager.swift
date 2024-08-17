@@ -30,15 +30,18 @@ final class CoreDataManager {
         observers.append(NotificationCenter.default.addObserver(
             forName: NSNotification.Name("General.icloudSync"), object: nil, queue: nil
         ) { [weak self] _ in
-            guard let cloudDescription = self?.container.persistentStoreDescriptions.first else { return }
+            guard let cloudDescription = self?.container.persistentStoreDescriptions.first else {
+                LogManager.logger.error("error: cloud description not set yet")
+                return }
             if UserDefaults.standard.bool(forKey: "General.icloudSync") {
-                cloudDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.xyz.skitty.Aidoku")
+                cloudDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.com.aidokulocal")
             } else {
                 cloudDescription.cloudKitContainerOptions = nil
             }
         })
     }
 
+    // see https://stackoverflow.com/questions/71492385/nspersistentcloudkitcontainer-and-persistent-history-tracking
     lazy var container: NSPersistentCloudKitContainer = {
         let container = NSPersistentCloudKitContainer(name: "Aidoku")
 
@@ -59,7 +62,7 @@ final class CoreDataManager {
 
         if UserDefaults.standard.bool(forKey: "General.icloudSync") {
             cloudDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
-                containerIdentifier: "iCloud.xyz.skitty.Aidoku")
+                containerIdentifier: "iCloud.com.aidokulocal")
         } else {
             cloudDescription.cloudKitContainerOptions = nil
         }
