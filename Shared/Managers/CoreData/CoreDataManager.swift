@@ -23,35 +23,8 @@ final class CoreDataManager {
             NotificationCenter.default.removeObserver(observer)
         }
     }
-    
-    func saveHistoryToken(_ token: NSPersistentHistoryToken?) {
-        guard let token = token else { return }
-        do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
-            UserDefaults.standard.set(data, forKey: "lastHistoryToken")
-        } catch {
-            LogManager.logger.error("Failed to save history token: \(error)")
-        }
-    }
-
-    func loadHistoryToken() -> NSPersistentHistoryToken? {
-        guard let data = UserDefaults.standard.data(forKey: "lastHistoryToken") else { return nil }
-        do {
-            return try NSKeyedUnarchiver.unarchivedObject(ofClass: NSPersistentHistoryToken.self, from: data)
-        } catch {
-            LogManager.logger.error("Failed to load history token: \(error)")
-            return nil
-        }
-    }
-    
-    func clearHistoryToken()
-    {
-        lastHistoryToken = nil
-    }
 
     init() {
-        
-        lastHistoryToken = loadHistoryToken()
         
         observers.append(NotificationCenter.default.addObserver(
             forName: NSNotification.Name("General.icloudSync"), object: nil, queue: nil
@@ -211,12 +184,6 @@ extension CoreDataManager {
                     let transactions = result?.result as? [NSPersistentHistoryTransaction],
                     !transactions.isEmpty
                 else { return }
-                
-                // If we have no saved token, use the latest transaction's token
-                if self.lastHistoryToken == nil, let latestTransaction = transactions.last {
-                    self.lastHistoryToken = latestTransaction.token
-                    self.saveHistoryToken(latestTransaction.token)
-                }
 
                 var newObjectIds = [NSManagedObjectID]()
                 let entityNames = [
@@ -245,7 +212,6 @@ extension CoreDataManager {
                 }
 
                 self.lastHistoryToken = transactions.last!.token
-                self.saveHistoryToken(self.lastHistoryToken)
             }
         }
     }

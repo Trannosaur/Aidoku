@@ -516,10 +516,8 @@ extension SettingsViewController {
                             CoreDataManager.shared.clearCategories(context: context)
                             CoreDataManager.shared.clearTracks(context: context)
                             CoreDataManager.shared.clearTracks(context: context)
-                            CoreDataManager.shared.clearHistoryToken()
                             try? context.save()
                         }
-                        UserDefaults.standard.removeObject(forKey: "lastHistoryToken")
                         SourceManager.shared.clearSources()
                         SourceManager.shared.clearSourceLists()
                         NotificationCenter.default.post(name: Notification.Name("updateLibrary"), object: nil)
