@@ -7,6 +7,10 @@
 
 import CoreData
 
+// Switch to using CKSyncEngine ?
+// https://developer.apple.com/videos/play/wwdc2023/10188/
+// https://developer.apple.com/documentation/CloudKit/CKSyncEngine-5sie5
+
 final class CoreDataManager {
 
     static let shared = CoreDataManager()
@@ -19,20 +23,43 @@ final class CoreDataManager {
             NotificationCenter.default.removeObserver(observer)
         }
     }
+    
+    func saveHistoryToken(_ token: NSPersistentHistoryToken?) {
+        guard let token = token else { return }
+        do {
+            let data = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
+            UserDefaults.standard.set(data, forKey: "lastHistoryToken")
+        } catch {
+            LogManager.logger.error("Failed to save history token: \(error)")
+        }
+    }
+
+    func loadHistoryToken() -> NSPersistentHistoryToken? {
+        guard let data = UserDefaults.standard.data(forKey: "lastHistoryToken") else { return nil }
+        do {
+            return try NSKeyedUnarchiver.unarchivedObject(ofClass: NSPersistentHistoryToken.self, from: data)
+        } catch {
+            LogManager.logger.error("Failed to load history token: \(error)")
+            return nil
+        }
+    }
+    
+    func clearHistoryToken()
+    {
+        lastHistoryToken = nil
+    }
 
     init() {
-        observers.append(NotificationCenter.default.addObserver(
-            forName: .NSPersistentStoreRemoteChange, object: container.persistentStoreCoordinator, queue: nil
-        ) { [weak self] _ in
-            self?.storeRemoteChange()
-        })
-
+        
+        lastHistoryToken = loadHistoryToken()
+        
         observers.append(NotificationCenter.default.addObserver(
             forName: NSNotification.Name("General.icloudSync"), object: nil, queue: nil
         ) { [weak self] _ in
             guard let cloudDescription = self?.container.persistentStoreDescriptions.first else {
                 LogManager.logger.error("error: cloud description not set yet")
                 return }
+            
             if UserDefaults.standard.bool(forKey: "General.icloudSync") {
                 cloudDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.com.aidokulocal")
             } else {
@@ -40,7 +67,7 @@ final class CoreDataManager {
             }
         })
     }
-
+    
     // see https://stackoverflow.com/questions/71492385/nspersistentcloudkitcontainer-and-persistent-history-tracking
     lazy var container: NSPersistentCloudKitContainer = {
         let container = NSPersistentCloudKitContainer(name: "Aidoku")
@@ -72,14 +99,23 @@ final class CoreDataManager {
             localDescription
         ]
 
-        container.viewContext.automaticallyMergesChangesFromParent = true
-        container.viewContext.mergePolicy = NSMergePolicy(merge: .mergeByPropertyObjectTrumpMergePolicyType)
-
         container.loadPersistentStores { _, error in
+            // completion handler:
             if let error = error as NSError? {
                 LogManager.logger.error("Error loading persistent stores \(error), \(error.userInfo)")
             }
+            
+            self.observers.append(NotificationCenter.default.addObserver(
+                forName: .NSPersistentStoreRemoteChange, object: container.persistentStoreCoordinator, queue: nil
+            ) { [weak self] _ in
+                self?.storeRemoteChange()
+            })
         }
+        
+        container.viewContext.automaticallyMergesChangesFromParent = true
+        container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy // NSMergePolicy(merge: .mergeByPropertyObjectTrumpMergePolicyType)
+        // NSMergeByPropertyObjectTrumpMergePolicy
+        
         return container
     }()
 
@@ -157,6 +193,8 @@ final class CoreDataManager {
     }
 }
 
+// need to handle timeouts
+
 extension CoreDataManager {
 
     func storeRemoteChange() {
@@ -173,6 +211,12 @@ extension CoreDataManager {
                     let transactions = result?.result as? [NSPersistentHistoryTransaction],
                     !transactions.isEmpty
                 else { return }
+                
+                // If we have no saved token, use the latest transaction's token
+                if self.lastHistoryToken == nil, let latestTransaction = transactions.last {
+                    self.lastHistoryToken = latestTransaction.token
+                    self.saveHistoryToken(latestTransaction.token)
+                }
 
                 var newObjectIds = [NSManagedObjectID]()
                 let entityNames = [
@@ -201,6 +245,7 @@ extension CoreDataManager {
                 }
 
                 self.lastHistoryToken = transactions.last!.token
+                self.saveHistoryToken(self.lastHistoryToken)
             }
         }
     }
