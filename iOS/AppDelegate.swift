@@ -13,12 +13,12 @@ import SwiftUI
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 #if CANONICAL_BUILD          // true only for App-Store scheme
-    static let canonicalID = "app.aidoku.Aidoku"
+    static let canonicalID = "com.aidokulocal"
 #else
     static let canonicalID = Bundle.main.bundleIdentifier ?? ""
 #endif
 
-    static let isSideloaded = Bundle.main.bundleIdentifier != false // canonicalID
+    static let isSideloaded = false //Bundle.main.bundleIdentifier != canonicalID
     private var networkObserverId: UUID?
 
     private lazy var loadingAlert: UIAlertController = {
