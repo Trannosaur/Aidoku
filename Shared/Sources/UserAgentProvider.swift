@@ -45,25 +45,7 @@ class UserAgentProvider {
             return userAgent
         }
         return BlockingTask {
-            await self.task?.value ?? ""
+            await self.getUserAgent()
         }.get()
-    }
-}
-
-private class BlockingTask<T> {
-    let semaphore = DispatchSemaphore(value: 0)
-    private var result: T?
-
-    init(block: @escaping () async -> T) {
-        Task {
-            result = await block()
-            semaphore.signal()
-        }
-    }
-
-    func get() -> T {
-        if let result { return result }
-        semaphore.wait()
-        return result!
     }
 }

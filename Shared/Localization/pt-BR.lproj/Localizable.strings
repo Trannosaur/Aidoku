@@ -127,7 +127,7 @@
 "RESTORE_BACKUP_TEXT" = "Todos os dados atuais serão removidos e substituídos pelos dados deste backup.";
 "BACKUP_IMPORT_SUCCESS" = "Backup importado";
 "BACKUP_IMPORT_SUCCESS_TEXT" = "Para restaurar este backup, localize-o na página de backups nas configurações.";
-"BACKUP_IMPORT_FAIL" = "Falha na importação";
+"IMPORT_FAIL" = "Falha na importação";
 "BACKUP_IMPORT_FAIL_TEXT" = "Falha ao salvar o backup. Certifique-se de que seu backup esteja no formato adequado.";
 "EXPORT" = "Exportar";
 "RESTORE" = "Restaurar";
@@ -259,12 +259,12 @@
 "VOLUMES" = "Volumes";
 "STARTED" = "Iniciado";
 "STATUS" = "Status";
-"REREADING" = "Relendo";
+"TRACK_REREADING" = "Relendo";
 "START_TRACKING" = "Começar a seguir";
-"PAUSED" = "Pausado";
+"TRACK_PAUSED" = "Pausado";
 "FINISHED" = "Finalizado";
-"READING" = "Lendo";
-"DROPPED" = "Abandonado";
+"TRACK_READING" = "Lendo";
+"TRACK_DROPPED" = "Abandonado";
 "MANHWA" = "Manhwa";
 "NOT_PUBLISHED" = "Não publicado";
 "MANHUA" = "Manhua";
@@ -272,7 +272,7 @@
 "SCORE" = "Pontuação";
 "STOP_TRACKING" = "Deixar de seguir";
 "TRACK" = "Seguir";
-"PLANNING" = "Planejamento";
+"TRACK_PLANNING" = "Planejamento";
 "ONESHOT" = "One-shot";
 "MANGA" = "Manga";
 "TYPE_COLON_%@" = "Tipo: %@";

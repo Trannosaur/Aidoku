@@ -8,7 +8,6 @@
 import Foundation
 
 extension URL {
-
     fileprivate static let invalidDirectoryCharacters: CharacterSet = {
         var invalidCharacters = CharacterSet(charactersIn: ":/")
         invalidCharacters.formUnion(.newlines)
@@ -52,10 +51,21 @@ extension URL {
     func appendingSafePathComponent(_ pathComponent: String) -> URL {
         self.appendingPathComponent(pathComponent.components(separatedBy: Self.invalidDirectoryCharacters).joined())
     }
+
+    func append(path: String) -> URL {
+        if #available(iOS 16.0, macOS 13.0, *) {
+            return appending(path: path)
+        } else {
+            var url = self
+            for component in path.split(separator: "/") {
+                url = url.appendingPathComponent(String(component))
+            }
+            return url
+        }
+    }
 }
 
 extension FileManager {
-
     var documentDirectory: URL {
         urls(for: .documentDirectory, in: .userDomainMask)[0]
     }

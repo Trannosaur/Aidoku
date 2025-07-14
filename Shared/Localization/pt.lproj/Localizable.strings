@@ -92,7 +92,7 @@
 "MISSING_SOURCES" = "Fontes Ausentes";
 "RESTORE_BACKUP" = "Restaurar para este Backup?";
 "RESTORE_BACKUP_TEXT" = "Todos os dados actuais serão removidos e substituídos pelos dados deste backup.";
-"BACKUP_IMPORT_FAIL" = "A importação falhou";
+"IMPORT_FAIL" = "A importação falhou";
 "BACKUP_IMPORT_FAIL_TEXT" = "Falha ao guardar o backup. Certifique-se de que o seu backup está no formato correto.";
 "EXPORT" = "Exportar";
 "RESTORE" = "Restauro";
@@ -107,7 +107,7 @@
 "LOCKED_CATEGORIES" = "Categorias Travadas";
 "AUTH_FOR_LIBRARY" = "Autentique para visualizar a biblioteca.";
 "FINISHED" = "Finalizado";
-"READING" = "Lendo";
+"TRACK_READING" = "Lendo";
 "MANHUA" = "Manhua";
 "LIGHT_NOVEL" = "Romance Leve";
 "TRACK" = "Seguir";
@@ -267,12 +267,12 @@
 "STATUS" = "Status";
 "VOLUMES" = "Volumes";
 "STARTED" = "Começou";
-"REREADING" = "Relendo";
+"TRACK_REREADING" = "Relendo";
 "START_TRACKING" = "Começar a Seguir";
 "SCORE" = "Pontuação";
-"PAUSED" = "Pausado";
-"PLANNING" = "Planejamento";
-"DROPPED" = "Abandonado";
+"TRACK_PAUSED" = "Pausado";
+"TRACK_PLANNING" = "Planejamento";
+"TRACK_DROPPED" = "Abandonado";
 "STOP_TRACKING" = "Deixar de Seguir";
 "ONESHOT" = "One-shot";
 "NOT_PUBLISHED" = "Não Publicado";
@@ -362,3 +362,4 @@
 "DOWNLOAD_ANYWAY_MESSAGE" = "Não está conectado a Wi-Fi neste momento. Baixar mesmo assim?";
 "LINK_COPIED" = "Link Copiado";
 "LINK_COPIED_TEXT" = "O link foi copiado para a área de transferência.";
+"OPEN_WEBSITE" = "Abrir site de web";

@@ -105,7 +105,6 @@ class LibraryViewModel {
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     func loadLibrary() async {
         let currentCategory = self.currentCategory
         let sortMethod = self.sortMethod
@@ -454,9 +453,15 @@ class LibraryViewModel {
             }
         } else if sortMethod == .lastOpened {
             let index = manga.firstIndex(where: { $0.mangaId == mangaId && $0.sourceId == sourceId })
-            if let index = index {
+            if let index {
                 let manga = manga.remove(at: index)
-                self.manga.insert(manga, at: 0)
+                if sortAscending {
+                    // add to end
+                    self.manga.append(manga)
+                } else {
+                    // add to start
+                    self.manga.insert(manga, at: 0)
+                }
             }
         }
     }
@@ -476,6 +481,15 @@ class LibraryViewModel {
         pinnedManga.removeAll { $0.mangaId == manga.mangaId && $0.sourceId == manga.sourceId }
         self.manga.removeAll { $0.mangaId == manga.mangaId && $0.sourceId == manga.sourceId }
         await MangaManager.shared.removeFromLibrary(sourceId: manga.sourceId, mangaId: manga.mangaId)
+    }
+
+    func addToCurrentCategory(manga: MangaInfo) async {
+        guard let currentCategory = currentCategory else { return }
+        await CoreDataManager.shared.addCategoriesToManga(
+            sourceId: manga.sourceId,
+            mangaId: manga.mangaId,
+            categories: [currentCategory]
+        )
     }
 
     func removeFromCurrentCategory(manga: MangaInfo) async {

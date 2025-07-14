@@ -8,18 +8,12 @@
 import Foundation
 import AuthenticationServices
 
-#if os(OSX)
-    import AppKit
-#else
-    import UIKit
-#endif
-
 /// MyAnimeList tracker for Aidoku.
 class MyAnimeListTracker: OAuthTracker {
 
     let id = "myanimelist"
     let name = "MyAnimeList"
-    let icon = UIImage(named: "mal")
+    let icon = PlatformImage(named: "mal")
 
     let supportedStatuses = TrackStatus.defaultStatuses
     let scoreType: TrackScoreType = .tenPoint
@@ -31,8 +25,8 @@ class MyAnimeListTracker: OAuthTracker {
 
     var oauthClient: OAuthClient { api.oauth }
 
-    func register(trackId: String, hasReadChapters: Bool) async {
-        guard let id = Int(trackId) else { return }
+    func register(trackId: String, hasReadChapters: Bool) async -> String? {
+        guard let id = Int(trackId) else { return nil }
         // set status to reading if status doesn't already exist
         let status = await api.getMangaStatus(id: id)
         if status == nil {
@@ -41,6 +35,7 @@ class MyAnimeListTracker: OAuthTracker {
                 status: MyAnimeListMangaStatus(status: hasReadChapters ? "reading" : "plan_to_read")
             )
         }
+        return nil
     }
 
     func update(trackId: String, update: TrackUpdate) async {

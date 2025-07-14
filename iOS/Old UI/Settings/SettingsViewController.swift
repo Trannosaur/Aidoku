@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftUI
 import SafariServices
 import Nuke
 import WebKit
@@ -244,6 +245,11 @@ class SettingsViewController: SettingsTableViewController {
                     key: "Reader.skipDuplicateChapters",
                     title: NSLocalizedString("SKIP_DUPLICATE_CHAPTERS", comment: "")
                 ),
+                SettingItem(
+                    type: "switch",
+                    key: "Reader.markDuplicateChapters",
+                    title: NSLocalizedString("MARK_DUPLICATE_CHAPTERS", comment: "")
+                ),
                 SettingItem(type: "switch", key: "Reader.downsampleImages", title: NSLocalizedString("DOWNSAMPLE_IMAGES", comment: "")),
                 SettingItem(type: "switch", key: "Reader.cropBorders", title: NSLocalizedString("CROP_BORDERS", comment: "")),
                 SettingItem(type: "switch", key: "Reader.saveImageOption", title: NSLocalizedString("SAVE_IMAGE_OPTION", comment: "")),
@@ -256,6 +262,17 @@ class SettingsViewController: SettingsTableViewController {
                         NSLocalizedString("READER_BG_COLOR_SYSTEM", comment: ""),
                         NSLocalizedString("READER_BG_COLOR_WHITE", comment: ""),
                         NSLocalizedString("READER_BG_COLOR_BLACK", comment: "")
+                    ]
+                ),
+                SettingItem(
+                    type: "select",
+                    key: "Reader.orientation",
+                    title: NSLocalizedString("READER_ORIENTATION", comment: ""),
+                    values: ["device", "portrait", "landscape"],
+                    titles: [
+                        NSLocalizedString("FOLLOW_DEVICE", comment: ""),
+                        NSLocalizedString("PORTRAIT", comment: ""),
+                        NSLocalizedString("LANDSCAPE", comment: "")
                     ]
                 )
             ]),
@@ -395,8 +412,6 @@ class SettingsViewController: SettingsTableViewController {
 
 // MARK: - Table View Data Source
 extension SettingsViewController {
-
-    // swiftlint:disable:next cyclomatic_complexity
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         if let item = items[indexPath.section].items?[indexPath.row] {
             switch item.key {
@@ -407,7 +422,9 @@ extension SettingsViewController {
                 navigationController?.pushViewController(CategoriesViewController(), animated: true)
 
             case "Browse.sourceLists":
-                navigationController?.pushViewController(SourceListsViewController(), animated: true)
+                let hostingController = UIHostingController(rootView: SourceListsView())
+                hostingController.navigationItem.title = NSLocalizedString("SOURCE_LISTS")
+                navigationController?.pushViewController(hostingController, animated: true)
 
             case "Backups.backups":
                 navigationController?.pushViewController(BackupsViewController(), animated: true)
@@ -548,10 +565,6 @@ extension SettingsViewController {
             }
         }
         tableView.deselectRow(at: indexPath, animated: true)
-    }
-
-    override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        44
     }
 }
 

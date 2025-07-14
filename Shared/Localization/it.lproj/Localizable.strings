@@ -223,7 +223,7 @@
 "WITH_COMPLETED_STATUS" = "Con stato concluso";
 "SAVE_IMAGE_OPTION" = "Opzioni di salvataggio delle immagini";
 "BACKUPS" = "Backup";
-"BACKUP_IMPORT_FAIL" = "Importazione fallita";
+"IMPORT_FAIL" = "Importazione fallita";
 "BACKUP_IMPORT_FAIL_TEXT" = "Impossibile salvare il backup. Assicurati che il backup sia nel formato corretto.";
 "LOGS" = "Log";
 "SOURCE_LIST_ADD_FAIL_TEXT" = "L'URL dell'elenco delle fonti non è valido o è già stato aggiunto.";
@@ -270,13 +270,13 @@
 "VOLUMES" = "Volumi";
 "STARTED" = "Iniziato";
 "STOP_TRACKING" = "Interrompi il tracciamento";
-"REREADING" = "Rilettura";
+"TRACK_REREADING" = "Rilettura";
 "START_TRACKING" = "Avvia tracciamento";
 "SCORE" = "Punteggio";
-"PAUSED" = "In pausa";
-"READING" = "In lettura";
-"PLANNING" = "Pianificato";
-"DROPPED" = "Abbandonato";
+"TRACK_PAUSED" = "In pausa";
+"TRACK_READING" = "In lettura";
+"TRACK_PLANNING" = "Pianificato";
+"TRACK_DROPPED" = "Abbandonato";
 "NOT_PUBLISHED" = "Non pubblicato";
 "TYPE_COLON_%@" = "Tipo: %@";
 "STATUS_COLON_%@" = "Stato: %@";

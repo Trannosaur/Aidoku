@@ -7,12 +7,6 @@
 
 import Foundation
 
-#if os(OSX)
-    import AppKit
-#else
-    import UIKit
-#endif
-
 /// A protocol for the implementation of a Tracker.
 protocol Tracker: AnyObject {
     /// A unique identification string.
@@ -20,7 +14,7 @@ protocol Tracker: AnyObject {
     /// The title of the tracker.
     var name: String { get }
     /// The icon of the tracker.
-    var icon: UIImage? { get }
+    var icon: PlatformImage? { get }
     /// An array of track statuses the tracker supports.
     var supportedStatuses: [TrackStatus] { get }
     /// The current score type for the tracker.
@@ -36,8 +30,10 @@ protocol Tracker: AnyObject {
     /// Called when a tracker is linked with a title, indicating that the title should be added to the
     /// user's database on the tracker
     ///
+    /// - Returns: The id of tracker item, if it changes.
+    ///
     /// - Parameter trackId: The identifier for a tracker item.
-    func register(trackId: String, hasReadChapters: Bool) async
+    func register(trackId: String, hasReadChapters: Bool) async -> String?
 
     /// Update the state of a tracked title.
     ///
@@ -102,12 +98,5 @@ extension Tracker {
 
     func option(for score: Int) -> String? {
         scoreOptions.first { $0.1 == score }?.0
-    }
-}
-
-extension Tracker {
-    /// Check if tracker is currently tracking a manga object.
-    func isTracking(manga: Manga) -> Bool {
-        CoreDataManager.shared.hasTrack(trackerId: id, sourceId: manga.sourceId, mangaId: manga.id)
     }
 }

@@ -17,9 +17,9 @@ class BackupManager {
         Self.directory.contentsByDateModified
     }
 
-    static var backups: [Backup] {
-        Self.backupUrls.compactMap { Backup.load(from: $0) }
-    }
+//    static var backups: [Backup] {
+//        Self.backupUrls.compactMap { Backup.load(from: $0) }
+//    }
 
     func save(backup: Backup, url: URL? = nil) {
         Self.directory.createDirectory()
@@ -60,7 +60,6 @@ class BackupManager {
         }
         do {
             try FileManager.default.copyItem(at: url, to: targetLocation)
-            try? FileManager.default.removeItem(at: url)
             NotificationCenter.default.post(name: Notification.Name("updateBackupList"), object: nil)
             return true
         } catch {
@@ -69,7 +68,6 @@ class BackupManager {
     }
 
     func createBackup() async -> Backup {
-        // no
         await CoreDataManager.shared.container.performBackgroundTask { context in
             let library = CoreDataManager.shared.getLibraryManga(context: context).map {
                 BackupLibraryManga(libraryObject: $0)
@@ -90,6 +88,7 @@ class BackupManager {
             let sources = CoreDataManager.shared.getSources(context: context).compactMap {
                 $0.id
             }
+            let sourceLists = SourceManager.shared.sourceListsStrings
 
             return Backup(
                 library: library,
@@ -99,6 +98,7 @@ class BackupManager {
                 trackItems: trackItems,
                 categories: categories,
                 sources: sources,
+                sourceLists: sourceLists,
                 date: Date(),
                 version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
             )
@@ -126,7 +126,7 @@ class BackupManager {
 
         var stringValue: String {
             switch self {
-            case .manga: NSLocalizedString("MANGA", comment: "")
+            case .manga: NSLocalizedString("CONTENT", comment: "")
             case .categories: NSLocalizedString("CATEGORIES", comment: "")
             case .library: NSLocalizedString("LIBRARY", comment: "")
             case .history: NSLocalizedString("HISTORY", comment: "")
@@ -136,8 +136,16 @@ class BackupManager {
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
     func restore(from backup: Backup) async throws {
+        Task {
+            SourceManager.shared.clearSourceLists()
+            guard let sourceLists = backup.sourceLists else { return }
+            for sourceList in sourceLists {
+                guard let sourceListURL = URL(string: sourceList) else { continue }
+                _ = await SourceManager.shared.addSourceList(url: sourceListURL)
+            }
+        }
+
         let mangaTask = Task {
             if let backupManga = backup.manga {
                 let result = await CoreDataManager.shared.container.performBackgroundTask { context in

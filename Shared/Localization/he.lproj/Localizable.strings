@@ -206,7 +206,7 @@
 "SYNC_LOCAL_HISTORY" = "סנכרון היסטוריה מקומית";
 "SELECTED" = "נבחר";
 "RESTORE_BACKUP_TEXT" = "כל הנתונים הנוכחים יוסרו ויוחלפו על ידי הנתונים מגיבוי זה.";
-"BACKUP_IMPORT_FAIL" = "הייבוא נכשל";
+"IMPORT_FAIL" = "הייבוא נכשל";
 "RESTORE" = "שחזר";
 "LOGS" = "דוחות";
 "CLEAR_MANGA_CACHE" = "נקה מטמון מאנגה";
@@ -233,13 +233,13 @@
 "LOGOUT" = "להתנתק";
 "VOLUMES" = "כרכים";
 "STARTED" = "התחיל";
-"REREADING" = "קורא מחדש";
+"TRACK_REREADING" = "קורא מחדש";
 "SCORE" = "ציון";
-"PAUSED" = "הפסיק";
+"TRACK_PAUSED" = "הפסיק";
 "FINISHED" = "גמר";
-"READING" = "קורא";
-"PLANNING" = "מתכנן לקרוא";
-"DROPPED" = "הפסיק לקרוא";
+"TRACK_READING" = "קורא";
+"TRACK_PLANNING" = "מתכנן לקרוא";
+"TRACK_DROPPED" = "הפסיק לקרוא";
 "MANGA" = "מאנגה";
 "MANHWA" = "מנהווה";
 "MANHUA" = "מנהואה";

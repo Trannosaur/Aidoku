@@ -13,6 +13,9 @@ import CoreData
 
 final class CoreDataManager {
 
+    static let containerID = Bundle.main
+        .infoDictionary?["ICLOUD_CONTAINER_ID"] as? String ?? "iCloud.\(Bundle.main.bundleIdentifier!)"
+
     static let shared = CoreDataManager()
 
     private var observers: [NSObjectProtocol] = []
@@ -34,7 +37,7 @@ final class CoreDataManager {
                 return }
             
             if UserDefaults.standard.bool(forKey: "General.icloudSync") {
-                cloudDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.com.aidokulocal")
+                cloudDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: CoreDataManager.containerID)
             } else {
                 cloudDescription.cloudKitContainerOptions = nil
             }
@@ -62,7 +65,7 @@ final class CoreDataManager {
 
         if UserDefaults.standard.bool(forKey: "General.icloudSync") {
             cloudDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
-                containerIdentifier: "iCloud.com.aidokulocal")
+                containerIdentifier: CoreDataManager.containerID)
         } else {
             cloudDescription.cloudKitContainerOptions = nil
         }
@@ -77,18 +80,14 @@ final class CoreDataManager {
             if let error = error as NSError? {
                 LogManager.logger.error("Error loading persistent stores \(error), \(error.userInfo)")
             }
-            
-            self.observers.append(NotificationCenter.default.addObserver(
-                forName: .NSPersistentStoreRemoteChange, object: container.persistentStoreCoordinator, queue: nil
-            ) { [weak self] _ in
-                self?.storeRemoteChange()
-            })
         }
-        
-        container.viewContext.automaticallyMergesChangesFromParent = true
-        container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy // NSMergePolicy(merge: .mergeByPropertyObjectTrumpMergePolicyType)
-        // NSMergeByPropertyObjectTrumpMergePolicy
-        
+
+//        do {
+//            try container.initializeCloudKitSchema(options: [.printSchema])
+//        } catch {
+//            print("error initializing cloudkit schema:", error)
+//        }
+
         return container
     }()
 
@@ -102,24 +101,25 @@ final class CoreDataManager {
         container.viewContext
     }
 
-    func save() {
-        do {
-            try context.save()
-        } catch {
-            LogManager.logger.error("CoreDataManager.save: \(error.localizedDescription)")
-        }
-    }
+//    func save() {
+//        do {
+//            try context.save()
+//        } catch {
+//            LogManager.logger.error("CoreDataManager.save: \(error.localizedDescription)")
+//        }
+//    }
+//
+//    func saveIfNeeded() {
+//        if context.hasChanges {
+//            save()
+//        }
+//    }
 
-    func saveIfNeeded() {
-        if context.hasChanges {
-            save()
-        }
-    }
-
-    func remove(_ object: NSManagedObject) {
+    func remove(_ objectID: NSManagedObjectID) {
         container.performBackgroundTask { context in
-            let object = context.object(with: object.objectID)
+            let object = context.object(with: objectID)
             context.delete(object)
+            try? context.save()
         }
     }
 

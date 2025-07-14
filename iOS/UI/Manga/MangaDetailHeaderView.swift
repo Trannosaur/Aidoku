@@ -5,8 +5,9 @@
 //  Created by Skitty on 1/1/23.
 //
 
-import UIKit
+import Gifu
 import Nuke
+import UIKit
 
 protocol MangaDetailHeaderViewDelegate: AnyObject {
     func bookmarkPressed()
@@ -64,8 +65,8 @@ class MangaDetailHeaderView: UIView {
     }()
 
     // cover image (not private since we can preload this)
-    lazy var coverImageView: UIImageView = {
-        let coverImageView = UIImageView()
+    lazy var coverImageView: GIFImageView = {
+        let coverImageView = GIFImageView()
         coverImageView.image = UIImage(named: "MangaPlaceholder")
         coverImageView.contentMode = .scaleAspectFill
         coverImageView.clipsToBounds = true
@@ -221,6 +222,9 @@ class MangaDetailHeaderView: UIView {
     }
 
     private func configure() {
+        // fix buttons turning gray when reloaded with a sheet presented (e.g. migration view)
+        tintAdjustmentMode = .normal
+
         descriptionLabel.sizeChangeListener = self
 
         bookmarkButton.addTarget(self, action: #selector(bookmarkPressed), for: .touchUpInside)
@@ -297,8 +301,9 @@ class MangaDetailHeaderView: UIView {
 
         titleLabel.text = manga.title ?? NSLocalizedString("UNTITLED", comment: "")
         authorLabel.text = manga.author
-        descriptionLabel.text = manga.description
-        descriptionLabel.alpha = manga.description == nil ? 0 : 1 // for animating in
+        let hasDescription = !(manga.description?.isEmpty ?? true)
+        descriptionLabel.text = hasDescription ? manga.description : nil
+        descriptionLabel.alpha = hasDescription ? 1 : 0 // for animating in
 
         let status: String
         switch manga.status {
@@ -338,7 +343,7 @@ class MangaDetailHeaderView: UIView {
 
         UIView.animate(withDuration: 0.3) {
             self.authorLabel.isHidden = manga.author == nil
-            self.descriptionLabel.isHidden = manga.description == nil
+            self.descriptionLabel.isHidden = !hasDescription
             self.labelStackView.isHidden = manga.status == .unknown && manga.nsfw == .safe
         }
 
@@ -354,7 +359,7 @@ class MangaDetailHeaderView: UIView {
             }
             let showSourceLabel = inLibrary && UserDefaults.standard.bool(forKey: "General.showSourceLabel")
             if showSourceLabel, let source = SourceManager.shared.source(for: manga.sourceId) {
-                sourceLabelView.text = source.manifest.info.name
+                sourceLabelView.text = source.name
                 sourceLabelView.isHidden = false
             } else {
                 sourceLabelView.isHidden = true
@@ -407,19 +412,10 @@ class MangaDetailHeaderView: UIView {
             }
         }
 
-        var urlRequest = URLRequest(url: url)
-
-        if
-            let sourceId = sourceId,
-            let source = SourceManager.shared.source(for: sourceId),
-            source.handlesImageRequests,
-            let request = try? await source.getImageRequest(url: url.absoluteString)
-        {
-            urlRequest.url = URL(string: request.url ?? "")
-            for (key, value) in request.headers {
-                urlRequest.setValue(value, forHTTPHeaderField: key)
-            }
-            if let body = request.body { urlRequest.httpBody = body }
+        let urlRequest = if let sourceId, let source = SourceManager.shared.source(for: sourceId) {
+            await source.getModifiedImageRequest(url: url, context: nil)
+        } else {
+            URLRequest(url: url)
         }
 
         let request = ImageRequest(
@@ -427,10 +423,14 @@ class MangaDetailHeaderView: UIView {
             processors: [DownsampleProcessor(width: bounds.width)]
         )
 
-        guard let image = try? await ImagePipeline.shared.image(for: request) else { return }
+        let task = ImagePipeline.shared.imageTask(with: request)
+        guard let response = try? await task.response else { return }
         Task { @MainActor in
             UIView.transition(with: coverImageView, duration: 0.3, options: .transitionCrossDissolve) {
-                self.coverImageView.image = image
+                self.coverImageView.image = response.image
+            }
+            if response.container.type == .gif, let data = response.container.data {
+                self.coverImageView.animate(withGIFData: data)
             }
         }
     }
@@ -536,6 +536,7 @@ class MangaDetailHeaderView: UIView {
     }
     @objc private func safariPressed() {
         delegate?.safariPressed()
+        NSObject.cancelPreviousPerformRequests(withTarget: self)
     }
     @objc private func safariHeld() {
         cancelSafariButtonPress = true
@@ -595,7 +596,7 @@ class MangaDetailHeaderView: UIView {
 }
 
 extension MangaDetailHeaderView: SizeChangeListenerDelegate {
-    func sizeChanged(_ newSize: CGSize) {
+    func sizeChanged(_: CGSize) {
         sizeChangeListener?.sizeChanged(bounds.size)
     }
 }

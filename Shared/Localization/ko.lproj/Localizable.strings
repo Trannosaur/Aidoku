@@ -142,7 +142,7 @@
 "MISSING_SOURCES" = "누락된 소스";
 "RESTORE_BACKUP" = "이 백업으로 복원하겠습니까?";
 "BACKUP_IMPORT_SUCCESS_TEXT" = "이 백업으로 복원하려면 설정의 백업 페이지에서 찾으세요.";
-"BACKUP_IMPORT_FAIL" = "가져오기 실패";
+"IMPORT_FAIL" = "가져오기 실패";
 "BACKUP_IMPORT_FAIL_TEXT" = "백업을 저장하지 못했습니다. 백업 형식이 올바른지 확인하세요.";
 "EXPORT" = "내보내기";
 "LOGS" = "로그";
@@ -261,13 +261,13 @@
 "STATUS" = "상태";
 "START_TRACKING" = "트랙킹 시작";
 "STOP_TRACKING" = "트랙킹 중지";
-"REREADING" = "다시 읽기";
+"TRACK_REREADING" = "다시 읽기";
 "SCORE" = "점수";
-"PAUSED" = "일시중지됨";
+"TRACK_PAUSED" = "일시중지됨";
 "FINISHED" = "완료";
-"READING" = "읽기";
-"PLANNING" = "계획";
-"DROPPED" = "떨어짐";
+"TRACK_READING" = "읽기";
+"TRACK_PLANNING" = "계획";
+"TRACK_DROPPED" = "떨어짐";
 "ONESHOT" = "일회성";
 "MANHWA" = "한국 만화";
 "NOT_PUBLISHED" = "출간되지 않음";
