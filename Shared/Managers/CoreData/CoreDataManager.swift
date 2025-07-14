@@ -13,8 +13,8 @@ import CoreData
 
 final class CoreDataManager {
 
-    static let containerID = Bundle.main
-        .infoDictionary?["ICLOUD_CONTAINER_ID"] as? String ?? "iCloud.\(Bundle.main.bundleIdentifier!)"
+    static let containerID = "iCloud.com.aidokulocal" /*Bundle.main
+        .infoDictionary?["ICLOUD_CONTAINER_ID"] as? String ?? "iCloud.\(Bundle.main.bundleIdentifier!)"*/
 
     static let shared = CoreDataManager()
 
