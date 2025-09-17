@@ -498,6 +498,10 @@ extension LibraryViewController {
                 UIView.animate(withDuration: 0.3) {
                     self.navigationController?.isToolbarHidden = false
                     self.navigationController?.toolbar.alpha = 1
+                    if #available(iOS 26.0, *) {
+                        // hide tab bar on iOS 26 (it covers the toolbar)
+                        self.tabBarController?.isTabBarHidden = true
+                    }
                 }
             }
             // show add to category button if categories exist
@@ -524,6 +528,10 @@ extension LibraryViewController {
             // fade out toolbar
             UIView.animate(withDuration: 0.3) {
                 self.navigationController?.toolbar.alpha = 0
+                if #available(iOS 26.0, *) {
+                    // reshow tab bar on iOS 26
+                    self.tabBarController?.isTabBarHidden = false
+                }
             } completion: { _ in
                 self.navigationController?.isToolbarHidden = true
             }
@@ -566,7 +574,8 @@ extension LibraryViewController {
     }
 
     @objc func openMangaUpdates() {
-        let mangaUpdatesViewController = UIHostingController(rootView: MangaUpdatesView())
+        let path = NavigationCoordinator(rootViewController: self)
+        let mangaUpdatesViewController = UIHostingController(rootView: MangaUpdatesView().environmentObject(path))
         // configure navigation item before displaying to fix animation
         mangaUpdatesViewController.navigationItem.largeTitleDisplayMode = .never
         mangaUpdatesViewController.navigationItem.title = NSLocalizedString("MANGA_UPDATES", comment: "")
@@ -1133,7 +1142,7 @@ extension LibraryViewController {
                 }
             }
 
-            if manga.sourceId != "local" {
+            if manga.sourceId != LocalSourceRunner.sourceKey {
                 bottomMenuChildren.append(UIMenu(
                     title: NSLocalizedString("DOWNLOAD", comment: ""),
                     image: UIImage(systemName: "arrow.down.circle"),

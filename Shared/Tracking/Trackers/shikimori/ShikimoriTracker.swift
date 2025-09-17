@@ -23,8 +23,8 @@ class ShikimoriTracker: OAuthTracker {
 
     var oauthClient: OAuthClient { api.oauth }
 
-    func register(trackId: String, hasReadChapters: Bool) async -> String? {
-        await api.register(trackId: trackId, hasReadChapters: hasReadChapters)
+    func register(trackId: String, highestChapterRead: Float?, earliestReadDate: Date?) async throws -> String? {
+        await api.register(trackId: trackId, highestChapterRead: highestChapterRead, earliestReadDate: earliestReadDate)
     }
 
     func update(trackId: String, update: TrackUpdate) async {
@@ -41,12 +41,12 @@ class ShikimoriTracker: OAuthTracker {
         return URL(string: oauthClient.baseUrl + "/mangas/\(id)")
     }
 
-    func search(for manga: Manga) async -> [TrackSearchItem] {
-        await getSearch(query: manga.title ?? "", includeNsfw: manga.nsfw != .safe)
+    func search(for manga: Manga, includeNsfw: Bool) async -> [TrackSearchItem] {
+        await getSearch(query: manga.title ?? "", includeNsfw: includeNsfw)
     }
 
-    func search(title: String) async -> [TrackSearchItem] {
-        await getSearch(query: title)
+    func search(title: String, includeNsfw: Bool) async -> [TrackSearchItem] {
+        await getSearch(query: title, includeNsfw: includeNsfw)
     }
 
     func handleAuthenticationCallback(url: URL) async {
@@ -77,12 +77,12 @@ private extension ShikimoriTracker {
 
     func getMediaType(typeString: String) -> MediaType {
         switch typeString {
-        case "manga": return .manga
-        case "novel", "light_novel": return .novel
-        case "one_shot": return .oneShot
-        case "manhwa": return .manhwa
-        case "manhua": return .manhua
-        default: return .unknown
+            case "manga": return .manga
+            case "novel", "light_novel": return .novel
+            case "one_shot": return .oneShot
+            case "manhwa": return .manhwa
+            case "manhua": return .manhua
+            default: return .unknown
         }
     }
 }

@@ -21,6 +21,12 @@ class MangaCarouselHeader: UICollectionReusableView {
         }
     }
 
+    var contentRating: SourceContentRating? {
+        didSet {
+            setContentRatingTag(contentRating: contentRating)
+        }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         layoutViews()
@@ -45,6 +51,47 @@ class MangaCarouselHeader: UICollectionReusableView {
 
         viewMoreButton.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor).isActive = true
         viewMoreButton.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
+    }
+
+    private func setContentRatingTag(contentRating: SourceContentRating?) {
+        guard contentRating != .safe else { return }
+
+        let contentRatingTagContainer = UIView()
+        let contentRatingTagLabel = UILabel()
+
+        switch contentRating {
+        case .containsNsfw:
+            contentRatingTagLabel.text = "17+"
+            contentRatingTagContainer.backgroundColor = UIColor.orange.withAlphaComponent(0.3)
+        case .primarilyNsfw:
+            contentRatingTagLabel.text = "18+"
+            contentRatingTagContainer.backgroundColor = UIColor.red.withAlphaComponent(0.3)
+        default:
+            return
+        }
+
+        contentRatingTagContainer.layer.cornerRadius = 6
+        contentRatingTagContainer.layer.masksToBounds = true
+
+        contentRatingTagLabel.font = UIFont.systemFont(ofSize: 12)
+        contentRatingTagLabel.textColor = .secondaryLabel
+        contentRatingTagLabel.textAlignment = .center
+
+        addSubview(contentRatingTagContainer)
+        contentRatingTagContainer.addSubview(contentRatingTagLabel)
+
+        contentRatingTagContainer.translatesAutoresizingMaskIntoConstraints = false
+        contentRatingTagLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            contentRatingTagContainer.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 8),
+            contentRatingTagContainer.centerYAnchor.constraint(equalTo: centerYAnchor),
+
+            contentRatingTagLabel.topAnchor.constraint(equalTo: contentRatingTagContainer.topAnchor, constant: 3),
+            contentRatingTagLabel.bottomAnchor.constraint(equalTo: contentRatingTagContainer.bottomAnchor, constant: -3),
+            contentRatingTagLabel.leadingAnchor.constraint(equalTo: contentRatingTagContainer.leadingAnchor, constant: 5),
+            contentRatingTagLabel.trailingAnchor.constraint(equalTo: contentRatingTagContainer.trailingAnchor, constant: -5)
+        ])
     }
 }
 
@@ -160,12 +207,8 @@ class SearchViewController: UIViewController {
     }
 
     func openMangaView(for manga: AidokuRunner.Manga, source: AidokuRunner.Source) {
-        let hostingController = UIHostingController(
-            rootView: MangaView(source: source, manga: manga)
-                .environmentObject(NavigationCoordinator(rootViewController: self))
-        )
-        hostingController.navigationItem.largeTitleDisplayMode = .never
-        navigationController?.pushViewController(hostingController, animated: true)
+        let viewController = MangaViewController(source: source, manga: manga, parent: self)
+        navigationController?.pushViewController(viewController, animated: true)
     }
 
     @objc func openSearchView(_ sender: UIButton) {
@@ -247,6 +290,7 @@ extension SearchViewController: UICollectionViewDataSource {
             }
 
             headerView?.title = sources[indexPath.section].name
+            headerView?.contentRating = sources[indexPath.section].contentRating
             headerView?.viewMoreButton.addTarget(self, action: #selector(openSearchView(_:)), for: .touchUpInside)
             headerView?.viewMoreButton.tag = indexPath.section
 
@@ -377,7 +421,7 @@ extension SearchViewController {
     override var keyCommands: [UIKeyCommand]? {
         [
             UIKeyCommand(
-                title: "Select Item to the Left",
+                title: NSLocalizedString("FOCUS_ITEM_LEFT"),
                 action: #selector(arrowKeyPressed(_:)),
                 input: UIKeyCommand.inputLeftArrow,
                 modifierFlags: [],
@@ -386,7 +430,7 @@ extension SearchViewController {
                 state: .off
             ),
             UIKeyCommand(
-                title: "Select Item to the Right",
+                title: NSLocalizedString("FOCUS_ITEM_RIGHT"),
                 action: #selector(arrowKeyPressed(_:)),
                 input: UIKeyCommand.inputRightArrow,
                 modifierFlags: [],
@@ -395,7 +439,7 @@ extension SearchViewController {
                 state: .off
             ),
             UIKeyCommand(
-                title: "Select Item Above",
+                title: NSLocalizedString("FOCUS_ITEM_ABOVE"),
                 action: #selector(arrowKeyPressed(_:)),
                 input: UIKeyCommand.inputUpArrow,
                 modifierFlags: [],
@@ -404,7 +448,7 @@ extension SearchViewController {
                 state: .off
             ),
             UIKeyCommand(
-                title: "Select Item Below",
+                title: NSLocalizedString("FOCUS_ITEM_BELOW"),
                 action: #selector(arrowKeyPressed(_:)),
                 input: UIKeyCommand.inputDownArrow,
                 modifierFlags: [],
@@ -413,7 +457,7 @@ extension SearchViewController {
                 state: .off
             ),
             UIKeyCommand(
-                title: "Open Selected Item",
+                title: NSLocalizedString("OPEN_FOCUS_ITEM"),
                 action: #selector(enterKeyPressed),
                 input: "\r",
                 modifierFlags: [],
@@ -422,7 +466,7 @@ extension SearchViewController {
                 state: .off
             ),
             UIKeyCommand(
-                title: "Clear Selection",
+                title: NSLocalizedString("RESET_FOCUS"),
                 action: #selector(escKeyPressed),
                 input: UIKeyCommand.inputEscape,
                 modifierFlags: [],

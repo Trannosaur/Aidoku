@@ -126,7 +126,6 @@ class SettingsViewController: SettingsTableViewController {
                     key: "Library.lockLibrary",
                     title: NSLocalizedString("LOCK_LIBRARY", comment: ""),
                     notification: "updateLibraryLock",
-                    authToEnable: true,
                     authToDisable: true
                 )
             ]),
@@ -220,7 +219,6 @@ class SettingsViewController: SettingsTableViewController {
                     type: "switch",
                     key: "History.lockHistoryTab",
                     title: NSLocalizedString("LOCK_HISTORY_TAB", comment: ""),
-                    authToEnable: true,
                     authToDisable: true
                 )
             ]),
@@ -252,7 +250,7 @@ class SettingsViewController: SettingsTableViewController {
                 ),
                 SettingItem(type: "switch", key: "Reader.downsampleImages", title: NSLocalizedString("DOWNSAMPLE_IMAGES", comment: "")),
                 SettingItem(type: "switch", key: "Reader.cropBorders", title: NSLocalizedString("CROP_BORDERS", comment: "")),
-                SettingItem(type: "switch", key: "Reader.saveImageOption", title: NSLocalizedString("SAVE_IMAGE_OPTION", comment: "")),
+                SettingItem(type: "switch", key: "Reader.disableQuickActions", title: NSLocalizedString("DISABLE_QUICK_ACTIONS", comment: "")),
                 SettingItem(
                     type: "select",
                     key: "Reader.backgroundColor",
@@ -276,6 +274,51 @@ class SettingsViewController: SettingsTableViewController {
                     ]
                 )
             ]),
+            SettingItem(type: "group", title: NSLocalizedString("TAP_ZONES"), items: [
+                SettingItem(
+                    type: "select",
+                    key: "Reader.tapZones",
+                    title: NSLocalizedString("TAP_ZONES"),
+                    values: DefaultTapZones.allCases.map { $0.value },
+                    titles: DefaultTapZones.allCases.map { $0.title }
+                ),
+                SettingItem(
+                    type: "switch",
+                    key: "Reader.invertTapZones",
+                    title: NSLocalizedString("INVERT_TAP_ZONES")
+                ),
+                SettingItem(
+                    type: "switch",
+                    key: "Reader.animatePageTransitions",
+                    title: NSLocalizedString("ANIMATE_PAGE_TRANSITIONS")
+                )
+            ]),
+            SettingItem(
+                type: "group",
+                title: NSLocalizedString("UPSCALING"),
+                footer: NSLocalizedString("UPSCALE_MAX_IMAGE_HEIGHT_TEXT"),
+                items: [
+                    SettingItem(
+                        type: "switch",
+                        key: "Reader.upscaleImages",
+                        title: String(format: NSLocalizedString("%@_EXPERIMENTAL"), NSLocalizedString("UPSCALE_IMAGES")),
+                        requiresFalse: "Reader.downsampleImages"
+                    ),
+                    SettingItem(
+                        type: "page",
+                        key: "Reader.upscaleModels",
+                        title: NSLocalizedString("UPSCALING_MODELS")
+                    ),
+                    SettingItem(
+                        type: "stepper",
+                        key: "Reader.upscaleMaxHeight",
+                        title: NSLocalizedString("UPSCALE_MAX_IMAGE_HEIGHT"),
+                        minimumValue: 200,
+                        maximumValue: 4000,
+                        stepValue: 100
+                    )
+                ]
+            ),
             ReaderPagedViewModel.settings,
             ReaderWebtoonViewModel.settings,
             // MARK: Backups
@@ -285,6 +328,10 @@ class SettingsViewController: SettingsTableViewController {
             // MARK: Trackers
             SettingItem(type: "group", title: NSLocalizedString("TRACKERS", comment: ""), items: [
                 SettingItem(type: "page", key: "Trackers.trackers", title: NSLocalizedString("TRACKERS", comment: ""))
+            ]),
+            // MARK: Download Manager
+            SettingItem(type: "group", title: NSLocalizedString("DOWNLOAD_MANAGER", comment: ""), items: [
+                SettingItem(type: "page", key: "Downloads.manager", title: NSLocalizedString("DOWNLOAD_MANAGER", comment: ""))
             ]),
             // MARK: Logging
             SettingItem(type: "group", title: NSLocalizedString("LOGGING", comment: ""), items: [
@@ -426,11 +473,30 @@ extension SettingsViewController {
                 hostingController.navigationItem.title = NSLocalizedString("SOURCE_LISTS")
                 navigationController?.pushViewController(hostingController, animated: true)
 
+            case "Reader.tapZones":
+                let hostingController = UIHostingController(rootView: TapZonesSelectView())
+                hostingController.navigationItem.title = NSLocalizedString("TAP_ZONES")
+                navigationController?.pushViewController(hostingController, animated: true)
+
+            case "Reader.upscaleModels":
+                let hostingController = UIHostingController(rootView: UpscaleModelListView())
+                hostingController.navigationItem.title = NSLocalizedString("UPSCALING_MODELS")
+                navigationController?.pushViewController(hostingController, animated: true)
+
             case "Backups.backups":
                 navigationController?.pushViewController(BackupsViewController(), animated: true)
 
             case "Trackers.trackers":
                 navigationController?.pushViewController(TrackersViewController(), animated: true)
+
+            case "Downloads.manager":
+                let path = NavigationCoordinator(rootViewController: self)
+                let hostingController = UIHostingController(
+                    rootView: DownloadManagerView()
+                        .environmentObject(path)
+                )
+                hostingController.navigationItem.title = NSLocalizedString("DOWNLOAD_MANAGER")
+                navigationController?.pushViewController(hostingController, animated: true)
 
             case "Logs.export":
                 let url = LogManager.export()
@@ -575,9 +641,9 @@ extension SettingsViewController {
         URLCache.shared.removeAllCachedResponses()
         HTTPCookieStorage.shared.removeCookies(since: Date.distantPast)
         WKWebsiteDataStore.default().fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { records in
-          records.forEach { record in
-              WKWebsiteDataStore.default().removeData(ofTypes: record.dataTypes, for: [record], completionHandler: {})
-          }
+            for record in records {
+                WKWebsiteDataStore.default().removeData(ofTypes: record.dataTypes, for: [record], completionHandler: {})
+            }
         }
         // clear disk cache
         if let dataCache = ImagePipeline.shared.configuration.dataCache as? DataCache {

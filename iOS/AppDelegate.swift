@@ -123,9 +123,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 "Reader.readingMode": "auto",
                 "Reader.skipDuplicateChapters": true,
                 "Reader.markDuplicateChapters": true,
-                "Reader.downsampleImages": true,
+                "Reader.downsampleImages": false,
+                "Reader.upscaleImages": false,
+                "Reader.upscaleMaxHeight": 2000,
                 "Reader.cropBorders": false,
-                "Reader.saveImageOption": true,
+                "Reader.disableQuickActions": false,
+                "Reader.tapZones": "disabled",
+                "Reader.invertTapZones": false,
+                "Reader.animatePageTransitions": true,
                 "Reader.backgroundColor": "black",
                 "Reader.pagesToPreload": 2,
                 "Reader.pagedPageLayout": "auto",
@@ -152,7 +157,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             $0.dataCache = dataCache
             $0.imageCache = imageCache
             $0.dataLoader = dataLoader
-            $0.dataCachePolicy = .automatic
+            $0.dataCachePolicy = .storeOriginalData
             $0.isStoringPreviewsInMemoryCache = false
         }
 
@@ -272,20 +277,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                             needsDetails: true,
                             needsChapters: false
                         ) {
-                            let scrollTo: Chapter?
-                            if let chapterId = url.pathComponents[safe: 2] {
-                                scrollTo = Chapter(
-                                    sourceId: source.id,
-                                    id: chapterId,
-                                    mangaId: manga.key,
-                                    title: nil,
-                                    sourceOrder: 0
+                            if let navigationController {
+                                navigationController.pushViewController(
+                                    MangaViewController(
+                                        source: source,
+                                        manga: manga,
+                                        parent: navigationController.topViewController,
+                                        scrollToChapterKey: url.pathComponents[safe: 2] // /sourceId/mangaId/chapterId
+                                    ),
+                                    animated: true
                                 )
-                            } else {
-                                scrollTo = nil
                             }
-                            let vc = MangaViewController(manga: manga.toOld(), scrollTo: scrollTo)
-                            navigationController?.pushViewController(vc, animated: true)
                         }
                     } else { // /sourceId
                         let vc: UIViewController = if let legacySource = source.legacySource {
@@ -399,20 +401,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                         needsChapters: false
                     ) else { return false }
 
-                    let chapter: Chapter? = if let chapterId = link?.chapterKey {
-                        Chapter(
-                            sourceId: targetSource.id,
-                            id: chapterId,
-                            mangaId: mangaId,
-                            title: nil,
-                            sourceOrder: 0
-                        )
-                    } else {
-                        nil
-                    }
-
                     navigationController.pushViewController(
-                        MangaViewController(manga: manga.toOld(), scrollTo: chapter), animated: true
+                        MangaViewController(
+                            source: targetSource,
+                            manga: manga,
+                            parent: navigationController.topViewController,
+                            scrollToChapterKey: link?.chapterKey
+                        ),
+                        animated: true
                     )
 
                     return true
@@ -454,24 +450,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                                     CoreDataManager.shared.getLibraryManga(sourceId: source.id, context: context)
                                         .compactMap { $0.manga?.id },
                                     CoreDataManager.shared.getChapters(sourceId: source.id, context: context)
-                                        .map { $0.id },
+                                        .map { ($0.mangaId, $0.id) },
                                     historyObjects.map { $0.mangaId },
-                                    historyObjects.map { $0.chapterId },
+                                    historyObjects.map { ($0.mangaId, $0.chapterId) },
                                 )
                             }
                             var newMangaIds: [String: String] = [:]
                             var newChapterIds: [String: String] = [:]
+                            if source.features.handlesNotifications {
+                                try? await source.handleNotification(notification: "system.startMigration")
+                            }
                             for oldId in libraryMangaIds {
-                                newMangaIds[oldId] = try? await source.handleMigration(id: oldId, kind: .manga)
+                                newMangaIds[oldId] = try? await source.handleMigration(kind: .manga, mangaKey: oldId, chapterKey: nil)
                             }
                             for oldId in historyMangaIds where newMangaIds[oldId] == nil  {
-                                newMangaIds[oldId] = try? await source.handleMigration(id: oldId, kind: .manga)
+                                newMangaIds[oldId] = try? await source.handleMigration(kind: .manga, mangaKey: oldId, chapterKey: nil)
                             }
-                            for oldId in libraryChaptersIds {
-                                newChapterIds[oldId] = try? await source.handleMigration(id: oldId, kind: .chapter)
+                            for (mangaId, oldId) in libraryChaptersIds {
+                                newChapterIds[oldId] = try? await source.handleMigration(kind: .chapter, mangaKey: mangaId, chapterKey: oldId)
                             }
-                            for oldId in historyChapterIds where newChapterIds[oldId] == nil  {
-                                newChapterIds[oldId] = try? await source.handleMigration(id: oldId, kind: .chapter)
+                            if source.features.handlesNotifications {
+                                try? await source.handleNotification(notification: "system.endMigration")
+                            }
+                            for (mangaId, oldId) in historyChapterIds where newChapterIds[oldId] == nil  {
+                                newChapterIds[oldId] = try? await source.handleMigration(kind: .chapter, mangaKey: mangaId, chapterKey: oldId)
                             }
                             await CoreDataManager.shared.container.performBackgroundTask { context in
                                 let libraryObjects = CoreDataManager.shared.getLibraryManga(sourceId: source.id, context: context)
@@ -485,6 +487,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                                     object.manga?.id = newId
                                 }
                                 for object in chapterObjects {
+                                    object.mangaId = newMangaIds[object.mangaId] ?? object.mangaId
                                     object.id = newChapterIds[object.id] ?? object.id
                                 }
                                 for object in historyObjects {
@@ -497,6 +500,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                                     LogManager.logger.error("Failed to save id migration: \(error)")
                                 }
                             }
+
+                            NotificationCenter.default.post(name: .updateLibrary, object: nil)
+                            NotificationCenter.default.post(name: .updateHistory, object: nil)
+
                             self.hideLoadingIndicator()
                         }
                     } else {

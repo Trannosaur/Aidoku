@@ -28,6 +28,7 @@
 "ENABLE_PERMISSION" = "Enable Permission";
 "PHOTOS_ACCESS_DENIED_TEXT" = "Access was previously denied. Please allow Aidoku access to your Photos to save images to your Camera Roll. You can enable access in privacy settings.";
 "CONTENT" = "Content";
+"%@_EXPERIMENTAL" = "%@ (Experimental)";
 
 // Downloads
 "DOWNLOAD" = "Download";
@@ -36,11 +37,22 @@
 "CANCEL_DOWNLOAD" = "Cancel Download";
 "REMOVE_DOWNLOAD" = "Remove Download";
 "REMOVE_ALL_DOWNLOADS" = "Remove All Downloads";
+"REMOVE_ALL_DOWNLOADS_CONFIRM" = "Are you sure you'd like to remove all downloads?";
 "REMOVE_DOWNLOADS" = "Remove Downloads";
 "REMOVE_DOWNLOADS_CONFIRM" = "Remove all selected downloads?";
 "NO_WIFI_ALERT_TITLE" = "No Wi-Fi";
 "NO_WIFI_ALERT_MESSAGE" = "You need to be connected to Wi-Fi to download this content. Please connect to Wi-Fi and try again.";
 "DOWNLOAD_ANYWAY_MESSAGE" = "You are not currently on Wi-Fi. Download anyway?";
+
+// Download Manager
+"DOWNLOAD_MANAGER" = "Download Manager";
+"NO_DOWNLOADS" = "No Downloads";
+"NO_DOWNLOADS_TEXT" = "Downloaded content will appear here.";
+"DOWNLOADED_CHAPTERS" = "Downloaded Chapters";
+"TOTAL_DOWNLOADS" = "Total Downloads";
+"%i_SERIES" = "%i series";
+"IN_LIBRARY" = "In Library";
+"VIEW_SERIES" = "View Series";
 
 // Library
 "LIBRARY" = "Library";
@@ -106,6 +118,8 @@
 "HOME" = "Home";
 "FILTERS" = "Filters";
 "APPLY" = "Apply";
+"RANGE_FROM" = "From";
+"RANGE_TO" = "To";
 "SOURCE_SETTINGS" = "Source Settings";
 "RESET_SETTINGS_CONFIRM_%@" = "Are you sure you want to reset all settings for %@?";
 "CANCEL_CONFIRM" = "Are you sure you want to cancel?";
@@ -272,6 +286,9 @@
 "INFINITE_VERTICAL_SCROLL" = "Infinite Vertical Scrolling";
 "SAVE_TO_PHOTOS" = "Save to Photos";
 "OPEN_WEBSITE" = "Open Website";
+"SET_COVER_IMAGE" = "Set Cover Image";
+"UPLOAD_CUSTOM_COVER" = "Upload Custom Cover";
+"RESET_COVER" = "Reset Cover";
 
 // History
 "HISTORY" = "History";
@@ -367,14 +384,36 @@
 "UNAVAILABLE_SOURCE_LISTS_TEXT" = "An error occured while fetching the above source lists.";
 "COPY_URL" = "Copy URL";
 
+// Upscaling
+"UPSCALING" = "Upscaling";
+"UPSCALE_IMAGES" = "Upscale Images";
+"UPSCALING_MODELS" = "Upscaling Models";
+"UPSCALE_MAX_IMAGE_HEIGHT" = "Maximum Image Height";
+"UPSCALE_MAX_IMAGE_HEIGHT_TEXT" = "Images larger than the maxmimum image height won't be upscaled.";
+"ENABLED_MODEL" = "Enabled Model";
+"AVAILABLE_MODELS" = "Available Models";
+"NO_AVAILABLE_MODELS" = "No Available Models";
+"NO_AVAILABLE_MODELS_TEXT" = "Failed to fetch available models. Check your network connection and ensure your app is running the latest version.";
+"MODEL_INFO" = "Model Info";
+
 "LOCK_HISTORY_TAB" = "Lock History Tab";
+
 "DOWNSAMPLE_IMAGES" = "Downsample Images";
 "CROP_BORDERS" = "Crop Borders";
-"SAVE_IMAGE_OPTION" = "Save Image Option";
+"DISABLE_QUICK_ACTIONS" = "Disable Quick Actions";
 "READER_BG_COLOR" = "Background Color";
 "READER_BG_COLOR_SYSTEM" = "System";
 "READER_BG_COLOR_WHITE" = "White";
 "READER_BG_COLOR_BLACK" = "Black";
+"TAP_ZONES" = "Tap Zones";
+"ZONE_LEFT_RIGHT" = "Left and Right";
+"ZONE_L_SHAPED" = "L-shaped";
+"ZONE_KINDLE" = "Kindle";
+"ZONE_EDGE" = "Edge";
+"DISABLED" = "Disabled";
+"INVERT_TAP_ZONES" = "Invert Tap Zones";
+"ANIMATE_PAGE_TRANSITIONS" = "Animate Page Transitions";
+
 "BACKUPS" = "Backups";
 "BACKUP_NAME" = "Backup Name";
 "RENAME_BACKUP" = "Rename Backup";
@@ -413,6 +452,8 @@
 "CLEAR_EXCLUDING_LIBRARY_TEXT" = "This action is irreversible. All read history excluding the library will be removed.";
 "RESET_SETTINGS" = "Reset Settings";
 "RESET_SETTINGS_TEXT" = "This action is irreversible. All app and source settings will be reset.";
+"CLEAR_SOURCE_CACHE" = "Clear Source Cache";
+"CLEAR_SOURCE_CACHE_TEXT" = "Cached network data for the source url(s) will be cleared. This may result in temporarily increased loading times.";
 "PAGE_X_OF_X" = "Page %i of %i";
 "LIBRARY_LOCKED" = "Library is locked.";
 "CATEGORY_LOCKED" = "Category is locked.";
@@ -462,12 +503,15 @@
 "VIEW_ON_WEBSITE" = "View On Website";
 "CLEAR_TRACKED_MANGA" = "Clear Tracked Manga";
 "CLEAR_TRACKED_MANGA_TEXT" = "This action is irreversible. Tracking for all trackers added to manga will be removed.";
+"SEARCH_OPTIONS" = "Search Options";
+"SHOW_NSFW_RESULTS" = "Show NSFW Results";
 
-"REMOVE_ALL_DOWNLOADS_CONFIRM" = "Are you sure you'd like to remove all downloads?";
 "CACHE_SIZE_%@" = "Cache size: %@";
 "SUPPORT_VIA_KOFI" = "Support via Ko-Fi";
 "UNREAD_CHAPTERS" = "Unread Chapters";
 "RELOAD" = "Reload";
+"RELOAD_FAILED" = "Reload Failed";
+"RELOAD_FAILED_TEXT" = "Failed to reload the image. Please try again.";
 "%i_OF_%i" = "%i of %i";
 "%i_PAGES_LEFT" = "%i pages left";
 "ONE_PAGE_LEFT" = "1 page left";
@@ -532,3 +576,19 @@
 "BACKUP_ERROR_TEXT" = "An error was encountering while restoring: %@. The backup may be invalid.";
 "READER_ORIENTATION" = "Orientation";
 "FOLLOW_DEVICE" = "Follow Device";
+
+// Keyboard shortcuts
+"FOCUS_ITEM_LEFT" = "Focus item to the left";
+"FOCUS_ITEM_RIGHT" = "Focus item to the right";
+"FOCUS_ITEM_ABOVE" = "Focus item above";
+"FOCUS_ITEM_BELOW" = "Focus item below";
+"FOCUS_ITEM_NEXT" = "Focus next item";
+"FOCUS_ITEM_PREV" = "Focus previous item";
+"OPEN_FOCUS_ITEM" = "Open focused item";
+"RESET_FOCUS" = "Reset focus";
+"TURN_PAGE_LEFT" = "Turn page left";
+"TURN_PAGE_RIGHT" = "Turn page right";
+"CHAPTER_FORWARD" = "Chapter forward";
+"CHAPTER_BACKWARD" = "Chapter backward";
+"OPEN_CHAPTER_LIST" = "Open chapter list";
+"CLOSE_READER" = "Close reader";

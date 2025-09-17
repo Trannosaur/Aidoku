@@ -18,46 +18,50 @@ struct MangaUpdatesView: View {
     }
 
     private let limit = 25
+
     @State var entries: [(Int, [(String, [MangaUpdateInfo])])] = []
     @State var offset = 0
     @State var loadingMore = false
     @State var reachedEnd = false
     @State var loadingTask: Task<(), Never>?
 
+    @EnvironmentObject var path: NavigationCoordinator
+
     var body: some View {
         Group {
-            if reachedEnd && entries.isEmpty {
-                VStack(alignment: .center) {
-                    Spacer()
-                    Text(NSLocalizedString("NO_UPDATES", comment: ""))
-                        .foregroundColor(.secondary)
-                    Spacer()
-                }
-            } else {
-                List {
-                    listItemsWithSections
+            List {
+                listItemsWithSections
 
-                    if !reachedEnd {
-                        loadingView
-                            .onAppear {
-                                if !loadingMore {
-                                    reachedEnd = true
-                                    loadingMore = true
-                                    loadingTask = Task {
-                                        await loadNewEntries()
-                                    }
+                if !reachedEnd {
+                    loadingView
+                        .onAppear {
+                            if !loadingMore {
+                                reachedEnd = true
+                                loadingMore = true
+                                loadingTask = Task {
+                                    await loadNewEntries()
                                 }
                             }
-                    } else if loadingMore {
-                        loadingView
+                        }
+                } else if loadingMore {
+                    loadingView
+                }
+            }
+            .listStyle(.plain)
+            .overlay {
+                if reachedEnd && entries.isEmpty {
+                    VStack(alignment: .center) {
+                        Spacer()
+                        Text(NSLocalizedString("NO_UPDATES", comment: ""))
+                            .foregroundColor(.secondary)
+                        Spacer()
                     }
                 }
-                .listStyle(.plain)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(NSLocalizedString("MANGA_UPDATES", comment: ""))
-        .refreshableCompat {
+        .refreshable {
             await reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("mangaUpdatesViewed"))) { notification in
@@ -84,7 +88,7 @@ struct MangaUpdatesView: View {
                     let updates = mangas[mangaIndex].1
                     if let manga = updates.first?.manga {
                         NavigationLink(
-                            destination: MangaViewOld(manga: manga)
+                            destination: MangaView(manga: manga.toNew(), path: path)
                                 .onAppear {
                                     setOpened(manga: manga)
                                 }
@@ -99,7 +103,7 @@ struct MangaUpdatesView: View {
                     .foregroundColor(.primary)
                     .font(.system(size: 16, weight: .medium))
             }
-            .hideListSectionSeparator()
+            .listRowSeparator(.hidden)
         }
     }
 
@@ -110,7 +114,7 @@ struct MangaUpdatesView: View {
                 .id(UUID()) // fixes progress view being invisible
             Spacer()
         }
-        .hideListRowSeparator()
+        .listRowSeparator(.hidden)
     }
 
     private func loadNewEntries() async {

@@ -5,8 +5,9 @@
 //  Created by Skitty on 8/14/22.
 //
 
-import CoreData
 import AidokuRunner
+import CoreData
+import Nuke
 
 class MangaManager {
     static let shared = MangaManager()
@@ -58,6 +59,9 @@ extension MangaManager {
                 LogManager.logger.error("MangaManager.addToLibrary: \(error.localizedDescription)")
             }
         }
+        // add enhanced trackers
+        await TrackerManager.shared.bindEnhancedTrackers(manga: manga)
+
         NotificationCenter.default.post(
             name: .addToLibrary,
             object: manga.toOld()
@@ -66,6 +70,11 @@ extension MangaManager {
     }
 
     func removeFromLibrary(sourceId: String, mangaId: String) async {
+        // Get manga object for notification before deletion
+        let mangaForNotification = await CoreDataManager.shared.container.performBackgroundTask { context in
+            CoreDataManager.shared.getManga(sourceId: sourceId, mangaId: mangaId, context: context)?.toNewManga()
+        }
+
         await CoreDataManager.shared.container.performBackgroundTask { context in
             // remove from library
             CoreDataManager.shared.removeManga(
@@ -94,7 +103,13 @@ extension MangaManager {
                 LogManager.logger.error("MangaManager.removeFromLibrary(mangaId: \(mangaId)): \(error.localizedDescription)")
             }
         }
-        NotificationCenter.default.post(name: Notification.Name("updateLibrary"), object: nil)
+
+        // Post specific notification for removal with manga object
+        if let mangaForNotification {
+            NotificationCenter.default.post(name: .removeFromLibrary, object: mangaForNotification)
+        }
+
+        NotificationCenter.default.post(name: .updateLibrary, object: nil)
     }
 
     func restoreToLibrary(
@@ -365,5 +380,78 @@ extension MangaManager {
         }
 
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "Library.lastUpdated")
+    }
+}
+
+// MARK: - Detail Editing
+extension MangaManager {
+    // sets uploaded cover image and returns the new cover url
+    func setCover(manga: AidokuRunner.Manga, cover: PlatformImage) async -> String? {
+        if manga.isLocal() {
+            return await LocalFileManager.shared.setCover(for: manga.key, image: cover)
+        }
+
+        // upload cover image to Documents/Covers/id.png
+        let documentsDirectory = FileManager.default.documentDirectory
+        let targetDirectory = documentsDirectory.appendingPathComponent("Covers")
+        let ext = if #available(iOS 17.0, *) {
+            "heic"
+        } else {
+            "png"
+        }
+        var targetUrl = targetDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+        while targetUrl.exists {
+            targetUrl = targetDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext)
+        }
+        targetDirectory.createDirectory()
+        do {
+            let data = if #available(iOS 17.0, *) {
+                cover.heicData()
+            } else {
+                cover.pngData()
+            }
+            try data?.write(to: targetUrl)
+        } catch {
+            LogManager.logger.error("MangaManager.setMangaCover: \(error.localizedDescription)")
+            return nil
+        }
+
+        // set cover in coredata
+        let coverUrl = "aidoku-image:///Covers/\(targetUrl.lastPathComponent)"
+        await CoreDataManager.shared.setCover(
+            sourceId: manga.sourceKey,
+            mangaId: manga.key,
+            coverUrl: coverUrl
+        )
+
+        return coverUrl
+    }
+
+    func resetCover(manga: AidokuRunner.Manga) async -> String? {
+        guard let source = SourceManager.shared.source(for: manga.sourceKey) else { return nil }
+
+        // fetch new manga details (for cover)
+        let newManga = try? await source.getMangaUpdate(
+            manga: manga,
+            needsDetails: true,
+            needsChapters: false
+        )
+
+        guard let cover = newManga?.cover else { return nil }
+
+        // set new cover and get old cover url
+        let originalCover = await CoreDataManager.shared.setCover(
+            sourceId: manga.sourceKey,
+            mangaId: manga.key,
+            coverUrl: cover,
+            original: true
+        )
+
+        // if the original cover is an aidoku image, remove it
+        if originalCover != cover, let originalCover, let url = URL(string: originalCover)?.toAidokuFileUrl() {
+            url.removeItem()
+        }
+
+        return cover
     }
 }

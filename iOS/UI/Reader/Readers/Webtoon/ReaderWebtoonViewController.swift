@@ -34,6 +34,8 @@ class ReaderWebtoonViewController: ZoomableCollectionViewController {
     private var isSliding = false
     // Indicates if a zoom gesture is in progress
     var isZooming = false
+    // Indicates if a scroll is in progress
+    private var isScrolling = false
     // Indicates if an info refresh should be done if info pages are off screen
     private var needsInfoRefresh = false
 
@@ -129,6 +131,8 @@ extension ReaderWebtoonViewController {
     override func scrollViewDidScroll(_ scrollView: UIScrollView) {
         super.scrollViewDidScroll(scrollView)
 
+        isScrolling = true
+
         // ignore if page slider is being used
         guard !isSliding && !isZooming else { return }
 
@@ -194,7 +198,7 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
             let indexPath = collectionNode.indexPathForItem(at: point),
             let node = collectionNode.nodeForItem(at: indexPath) as? ReaderWebtoonPageNode,
             let image = node.imageNode.image,
-            UserDefaults.standard.bool(forKey: "Reader.saveImageOption")
+            !UserDefaults.standard.bool(forKey: "Reader.disableQuickActions")
         else {
             return nil
         }
@@ -217,8 +221,39 @@ extension ReaderWebtoonViewController: UIContextMenuInteractionDelegate {
 
                 self.present(activityController, animated: true)
             }
-            return UIMenu(title: "", children: [saveToPhotosAction, shareAction])
+
+            let reloadAction = UIAction(
+                title: NSLocalizedString("RELOAD", comment: ""),
+                image: UIImage(systemName: "arrow.clockwise")
+            ) { _ in
+                Task { @MainActor in
+                    await self.reloadPageImage(for: node)
+                }
+            }
+
+            return UIMenu(title: "", children: [saveToPhotosAction, shareAction, reloadAction])
         })
+    }
+
+    /// Reloads the page image for the given webtoon page node
+    @MainActor
+    private func reloadPageImage(for node: ReaderWebtoonPageNode) async {
+        let success = await node.reloadCurrentImage()
+        if !success {
+            // Show error feedback if reload failed
+            showReloadError()
+        }
+    }
+
+    /// Shows an error message when image reload fails
+    private func showReloadError() {
+        let alert = UIAlertController(
+            title: NSLocalizedString("RELOAD_FAILED"),
+            message: NSLocalizedString("RELOAD_FAILED_TEXT"),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
+        present(alert, animated: true)
     }
 }
 
@@ -231,10 +266,17 @@ extension ReaderWebtoonViewController {
         if decelerate {
             return
         }
+        isScrolling = false
         checkInfiniteLoad()
     }
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         guard infinite else { return }
+        isScrolling = false
+        checkInfiniteLoad()
+    }
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        guard infinite else { return }
+        isScrolling = false
         checkInfiniteLoad()
     }
 
@@ -275,6 +317,11 @@ extension ReaderWebtoonViewController {
             return
         }
 
+        // wait until zooming and scrolling stops
+        while isZooming || isScrolling {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+        }
+
         // queue remove last section if we have three already
 //        let removeLast = chapters.count >= 3
 
@@ -292,7 +339,7 @@ extension ReaderWebtoonViewController {
         let layout = collectionNode.collectionViewLayout as? VerticalContentOffsetPreservingLayout
         layout?.isInsertingCellsAbove = true
 
-        // disable animations and adjust offset before re-enabling 
+        // disable animations and adjust offset before re-enabling
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         CATransaction.setAnimationDuration(0)
@@ -321,6 +368,11 @@ extension ReaderWebtoonViewController {
         // check if pages failed to load
         if viewModel.preloadedPages.isEmpty {
             return
+        }
+
+        // wait until zooming and scrolling stops
+        while isZooming || isScrolling {
+            try? await Task.sleep(nanoseconds: 500_000_000)
         }
 
         // queue remove first section if we have three already
@@ -406,6 +458,33 @@ extension ReaderWebtoonViewController {
 
 // MARK: - Reader Delegate
 extension ReaderWebtoonViewController: ReaderReaderDelegate {
+    func moveLeft() {
+        let offset = CGPoint(
+            x: collectionNode.contentOffset.x,
+            y: max(
+                0,
+                collectionNode.contentOffset.y - collectionNode.bounds.height * 2/3
+            )
+        )
+        scrollView.setContentOffset(
+            offset,
+            animated: UserDefaults.standard.bool(forKey: "Reader.animatePageTransitions")
+        )
+    }
+
+    func moveRight() {
+        let offset = CGPoint(
+            x: collectionNode.contentOffset.x,
+            y: min(
+                scrollView.contentSize.height - scrollView.bounds.height,
+                collectionNode.contentOffset.y + collectionNode.bounds.height * 2/3
+            )
+        )
+        scrollView.setContentOffset(
+            offset,
+            animated: UserDefaults.standard.bool(forKey: "Reader.animatePageTransitions")
+        )
+    }
 
     func sliderMoved(value: CGFloat) {
         isSliding = true

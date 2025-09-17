@@ -28,6 +28,9 @@ class ReaderWebtoonPageNode: BaseObservingCellNode {
     var ratio: CGFloat?
     private var loading = false
 
+    // MARK: - Reload functionality properties
+    private var currentImageRequest: ImageRequest?
+
     var pillarbox = UserDefaults.standard.bool(forKey: "Reader.pillarbox")
     var pillarboxAmount = CGFloat(UserDefaults.standard.double(forKey: "Reader.pillarboxAmount"))
     var pillarboxOrientation = UserDefaults.standard.string(forKey: "Reader.pillarboxOrientation")
@@ -250,12 +253,13 @@ extension ReaderWebtoonPageNode {
 
     private func loadImage(url: URL, context: PageContext?) async {
         let urlRequest = if let source {
-            await source.getModifiedImageRequest(url: url, context: nil)
+            await source.getModifiedImageRequest(url: url, context: context)
         } else {
             URLRequest(url: url)
         }
 
         let shouldDownsample = UserDefaults.standard.bool(forKey: "Reader.downsampleImages")
+        let shouldUpscale = UserDefaults.standard.bool(forKey: "Reader.upscaleImages")
         let shouldCropBorders = UserDefaults.standard.bool(forKey: "Reader.cropBorders")
         let width = await UIScreen.main.bounds.width
         var processors: [ImageProcessing] = []
@@ -272,6 +276,8 @@ extension ReaderWebtoonPageNode {
         }
         if shouldDownsample {
             processors.append(await DownsampleProcessor(width: width))
+        } else if shouldUpscale {
+            processors.append(UpscaleProcessor())
         }
 
         let request = ImageRequest(
@@ -279,6 +285,9 @@ extension ReaderWebtoonPageNode {
             processors: processors,
             userInfo: [.contextKey: context ?? [:], .processesKey: true]
         )
+
+        // Store current image request for reload functionality
+        self.currentImageRequest = request
 
         defer { loading = false }
 
@@ -342,6 +351,9 @@ extension ReaderWebtoonPageNode {
             userInfo: [:]
         )
 
+        // Store current image request for reload functionality
+        self.currentImageRequest = request
+
         progressNode.isHidden = false
         defer { loading = false }
 
@@ -365,15 +377,18 @@ extension ReaderWebtoonPageNode {
 
             if UserDefaults.standard.bool(forKey: "Reader.cropBorders") {
                 let processor = CropBordersProcessor()
-                let processedImage = processor.process(image)
-                if let processedImage = processedImage {
+                if let processedImage = processor.process(image) {
                     image = processedImage
                 }
             }
             if UserDefaults.standard.bool(forKey: "Reader.downsampleImages") {
                 let processor = await DownsampleProcessor(width: UIScreen.main.bounds.width)
-                let processedImage = processor.process(image)
-                if let processedImage = processedImage {
+                if let processedImage = processor.process(image) {
+                    image = processedImage
+                }
+            } else if UserDefaults.standard.bool(forKey: "Reader.upscaleImages") {
+                let processor = UpscaleProcessor()
+                if let processedImage = processor.process(image) {
                     image = processedImage
                 }
             }
@@ -400,6 +415,9 @@ extension ReaderWebtoonPageNode {
             data: { Data() },
             userInfo: [:]
         )
+
+        // Store current image request for reload functionality
+        self.currentImageRequest = request
 
         progressNode.isHidden = false
         defer { loading = false }
@@ -506,5 +524,55 @@ extension ReaderWebtoonPageNode {
         let size = CGSize(width: UIScreen.main.bounds.width, height: scaledHeight)
         frame = CGRect(origin: .zero, size: size)
         transitionLayout(with: ASSizeRange(min: .zero, max: size), animated: true, shouldMeasureAsync: false)
+    }
+
+    // MARK: - Image Reload Functionality
+
+    /// Reloads the current image by clearing its cache and re-fetching from the source
+    @MainActor
+    func reloadCurrentImage() async -> Bool {
+        // Clear the cache for the current image
+        clearCurrentImageCache()
+
+        // Clear the current image and text to show loading state
+        image = nil
+        text = nil
+        imageNode.image = nil
+        imageNode.alpha = 0
+        textNode.alpha = 0
+        loading = false
+
+        // Reload the image using the original page data
+        await loadPage()
+        return image != nil || text != nil
+    }
+
+    /// Clears the cache entry for the current image
+    private func clearCurrentImageCache() {
+        // Handle different image types
+        if let urlString = page.imageURL, let url = URL(string: urlString) {
+            // For URL-based images, remove from both memory and disk cache
+            if let currentImageRequest = currentImageRequest {
+                ImagePipeline.shared.cache.removeCachedImage(for: currentImageRequest)
+            }
+
+            // Also try to remove the basic URL request from cache
+            let basicRequest = ImageRequest(url: url)
+            ImagePipeline.shared.cache.removeCachedImage(for: basicRequest)
+
+        } else if page.base64 != nil {
+            // For base64 images, remove using the page key
+            let request = ImageRequest(id: page.key, data: { Data() })
+            ImagePipeline.shared.cache.removeCachedImage(for: request)
+
+        } else if let zipURL = page.zipURL, let url = URL(string: zipURL), let filePath = page.imageURL {
+            // For zip-based images, remove using the generated key
+            var hasher = Hasher()
+            hasher.combine(url)
+            hasher.combine(filePath)
+            let key = String(hasher.finalize())
+            let request = ImageRequest(id: key, data: { Data() })
+            ImagePipeline.shared.cache.removeCachedImage(for: request)
+        }
     }
 }

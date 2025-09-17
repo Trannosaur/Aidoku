@@ -5,8 +5,8 @@
 //  Created by Skitty on 8/15/22.
 //
 
-import UIKit
 import AidokuRunner
+import UIKit
 
 class ReaderPagedViewController: BaseObservingViewController {
 
@@ -70,6 +70,18 @@ class ReaderPagedViewController: BaseObservingViewController {
         addObserver(forName: "Reader.pagesToPreload") { [weak self] notification in
             self?.pagesToPreload = notification.object as? Int
                 ?? UserDefaults.standard.integer(forKey: "Reader.pagesToPreload")
+        }
+        addObserver(forName: UIApplication.didReceiveMemoryWarningNotification.rawValue) { [weak self] _ in
+            // clear pages that aren't in the preload range if we get a memory warning
+            guard
+                let self,
+                let viewController = pageViewController.viewControllers?.first,
+                let currentIndex = getIndex(of: viewController, pos: .first)
+            else { return }
+            let safeRange = max(0, currentIndex - pagesToPreload)...min(pageViewControllers.count - 1, currentIndex + pagesToPreload)
+            for (idx, controller) in pageViewControllers.enumerated() where !safeRange.contains(idx) {
+                controller.clearPage()
+            }
         }
     }
 
@@ -179,9 +191,7 @@ extension ReaderPagedViewController {
     }
 
     func move(toPage page: Int, animated: Bool) {
-        guard page <= viewModel.pages.count && page > 0 else {
-            return
-        }
+        let page = min(max(page, 0), viewModel.pages.count + 1)
 
         let vcIndex = page + (previousChapter != nil ? 1 : 0)
         var targetViewController: UIViewController?
@@ -204,9 +214,14 @@ extension ReaderPagedViewController {
             return
         }
 
+        let forward = switch readingMode {
+            case .rtl: currentPage > page
+            default: currentPage < page
+        }
+
         pageViewController.setViewControllers(
             [targetViewController],
-            direction: .forward,
+            direction: forward ? .forward : .reverse,
             animated: animated
         ) { completed in
             self.pageViewController(
@@ -265,6 +280,47 @@ extension ReaderPagedViewController {
 
 // MARK: - Reader Delegate
 extension ReaderPagedViewController: ReaderReaderDelegate {
+    func moveLeft() {
+        if
+            let currentViewController = pageViewController.viewControllers?.first,
+            let targetViewController = pageViewController(pageViewController, viewControllerBefore: currentViewController)
+        {
+            let animated = UserDefaults.standard.bool(forKey: "Reader.animatePageTransitions")
+            pageViewController.setViewControllers(
+                [targetViewController],
+                direction: .reverse,
+                animated: animated
+            ) { completed in
+                self.pageViewController(
+                    self.pageViewController,
+                    didFinishAnimating: true,
+                    previousViewControllers: [currentViewController],
+                    transitionCompleted: completed
+                )
+            }
+        }
+    }
+
+    func moveRight() {
+        if
+            let currentViewController = pageViewController.viewControllers?.last,
+            let targetViewController = pageViewController(pageViewController, viewControllerAfter: currentViewController)
+        {
+            let animated = UserDefaults.standard.bool(forKey: "Reader.animatePageTransitions")
+            pageViewController.setViewControllers(
+                [targetViewController],
+                direction: .forward,
+                animated: animated
+            ) { completed in
+                self.pageViewController(
+                    self.pageViewController,
+                    didFinishAnimating: true,
+                    previousViewControllers: [currentViewController],
+                    transitionCompleted: completed
+                )
+            }
+        }
+    }
 
     func sliderMoved(value: CGFloat) {
         let page = Int(round(value * CGFloat(viewModel.pages.count - 1))) + 1
@@ -487,7 +543,7 @@ extension ReaderPagedViewController: UIContextMenuInteractionDelegate {
         configurationForMenuAtLocation location: CGPoint
     ) -> UIContextMenuConfiguration? {
         guard
-            UserDefaults.standard.bool(forKey: "Reader.saveImageOption"),
+            !UserDefaults.standard.bool(forKey: "Reader.disableQuickActions"),
             let pageView = interaction.view as? UIImageView,
             pageView.image != nil
         else {
@@ -518,7 +574,41 @@ extension ReaderPagedViewController: UIContextMenuInteractionDelegate {
                 }
             }
 
-            return UIMenu(title: "", children: [saveToPhotosAction, shareAction])
+            let reloadAction = UIAction(
+                title: NSLocalizedString("RELOAD", comment: ""),
+                image: UIImage(systemName: "arrow.clockwise")
+            ) { _ in
+                Task { @MainActor in
+                    await self.reloadCurrentPageImage(for: pageView)
+                }
+            }
+
+            return UIMenu(title: "", children: [saveToPhotosAction, shareAction, reloadAction])
         })
+    }
+
+    @MainActor
+    private func reloadCurrentPageImage(for imageView: UIImageView) async {
+        for pageViewController in pageViewControllers {
+            if case .page = pageViewController.type,
+               let readerPageView = pageViewController.pageView,
+               readerPageView.imageView == imageView {
+                let success = await readerPageView.reloadCurrentImage()
+                if !success {
+                    showReloadError()
+                }
+                return
+            }
+        }
+    }
+
+    private func showReloadError() {
+        let alert = UIAlertController(
+            title: NSLocalizedString("RELOAD_FAILED"),
+            message: NSLocalizedString("RELOAD_FAILED_TEXT"),
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: NSLocalizedString("OK"), style: .default))
+        present(alert, animated: true)
     }
 }

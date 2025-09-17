@@ -63,12 +63,7 @@ struct HomeBigScrollerView: View {
                     autoScrollPaused: $autoScrollPaused,
                 ) { offset, entry in
                     Button {
-                        let hostingController = UIHostingController(
-                            rootView: MangaView(source: source, manga: entry)
-                                .environmentObject(path)
-                        )
-                        hostingController.navigationItem.largeTitleDisplayMode = .never
-                        path.push(hostingController)
+                        path.push(MangaViewController(source: source, manga: entry, parent: path.rootViewController))
                     } label: {
                         VStack(spacing: 0) {
                             HStack(alignment: .top, spacing: 12) {

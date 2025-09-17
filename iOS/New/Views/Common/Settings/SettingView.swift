@@ -42,13 +42,15 @@ struct SettingView: View {
     @State private var loginReload = false
     @State private var session: ASWebAuthenticationSession?
 
+    @State private var valueChangeTask: Task<Void, Never>?
+
     @StateObject private var userDefaultsObserver: UserDefaultsObserver // causes view to refresh when setting changes (e.g. when resetting)
     @StateObject private var requiresObserver: UserDefaultsObserver
 
     // empty view controller to support login view presentation
     private static var loginShimController = LoginShimViewController()
 
-    init(source: AidokuRunner.Source?, setting: Setting, namespace: String? = nil, hidden: Binding<Bool> = .constant(false)) {
+    init(source: AidokuRunner.Source? = nil, setting: Setting, namespace: String? = nil, hidden: Binding<Bool> = .constant(false)) {
         self.source = source
 
         // localize the setting title
@@ -173,24 +175,28 @@ struct SettingView: View {
     }
 
     private func handleValueChange() {
-        func refresh() {
-            for refresh in setting.refreshes {
-                NotificationCenter.default.post(name: Notification.Name("refresh-\(refresh)"), object: nil)
+        valueChangeTask?.cancel()
+        valueChangeTask = Task {
+            // debounce change notification(s) with 500ms delay
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+
+            func refresh() {
+                for refresh in setting.refreshes {
+                    NotificationCenter.default.post(name: Notification.Name("refresh-\(refresh)"), object: nil)
+                }
             }
-        }
-        if let source, let notification = setting.notification {
-            Task {
+            if let source, let notification = setting.notification {
                 do {
                     try await source.handleNotification(notification: notification)
                 } catch {
                     LogManager.logger.error("Error handling setting notification for \(source.key): \(error)")
                 }
-                refresh()
             }
-        } else {
             refresh()
+            let notificationName = setting.notification ?? key(setting.key)
+            NotificationCenter.default.post(name: .init(notificationName), object: nil)
         }
-        NotificationCenter.default.post(name: .init(key(setting.key)), object: nil)
     }
 }
 
@@ -316,6 +322,7 @@ extension SettingView {
         HStack {
             VStack(alignment: .leading) {
                 Text(setting.title)
+                    .lineLimit(1)
                 if let subtitle = value.subtitle {
                     Text(NSLocalizedString(subtitle))
                         .font(.footnote)
@@ -339,6 +346,7 @@ extension SettingView {
     func stepperView(value: StepperSetting) -> some View {
         HStack {
             Text(setting.title)
+                .lineLimit(1)
             Spacer()
             if value.maximumValue >= value.minimumValue {
                 Text(String(format: "%g", doubleBinding))

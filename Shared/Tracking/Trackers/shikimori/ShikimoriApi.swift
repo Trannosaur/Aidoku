@@ -71,12 +71,15 @@ extension ShikimoriApi {
         )
     }
 
-    func register(trackId: String, hasReadChapters: Bool) async -> String? {
+    func register(trackId: String, highestChapterRead: Float?, earliestReadDate: Date?) async -> String? {
         var query: [String: String] = [:]
         query["user_rate[user_id]"] = await getUser()
         query["user_rate[target_id]"] = trackId
         query["user_rate[target_type]"] = "Manga"
-        query["user_rate[status]"] = hasReadChapters ? "watching" : "planned"
+        query["user_rate[status]"] = highestChapterRead != nil ? "watching" : "planned"
+        if let highestChapterRead {
+            query["user_rate[chapters]"] = String(highestChapterRead)
+        }
 
         guard var url = URL(string: oauth.baseUrl + "/api/v2/user_rates") else { return nil }
         url.queryParameters = query
@@ -166,26 +169,26 @@ private extension ShikimoriApi {
 
     func getStatusFromTrack(status: TrackStatus) -> String {
         switch status {
-        case .completed: return "completed"
-        case .dropped: return "dropped"
-        case .paused: return "on_hold"
-        case .planning: return "planned"
-        case .reading: return "watching"
-        case .rereading: return "rewatching"
-        default: return ""
+            case .completed: return "completed"
+            case .dropped: return "dropped"
+            case .paused: return "on_hold"
+            case .planning: return "planned"
+            case .reading: return "watching"
+            case .rereading: return "rewatching"
+            default: return ""
         }
     }
 
     func getStatusFromString(status: String?) -> TrackStatus {
         switch status {
-        case "completed": return .completed
-        case "dropped": return .dropped
-        case "on_hold": return .paused
-        case "planned": return .planning
-        case "watching": return .reading
-        case "rewatching": return .rereading
-        case nil: return .none
-        default: return .planning
+            case "completed": return .completed
+            case "dropped": return .dropped
+            case "on_hold": return .paused
+            case "planned": return .planning
+            case "watching": return .reading
+            case "rewatching": return .rereading
+            case nil: return .none
+            default: return .planning
         }
     }
 

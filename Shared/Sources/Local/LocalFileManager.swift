@@ -43,11 +43,11 @@ actor LocalFileManager {
 extension LocalFileManager {
     // get info about a file to be imported
     func loadImportFileInfo(url: URL) -> ImportFileInfo? {
-        // the given url comes from an imported file, so we need to do this
-        guard url.startAccessingSecurityScopedResource() else {
-            return nil
+        // if the given url comes from an imported file that isn't copied, we need to do this
+        let accessGranted = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessGranted { url.stopAccessingSecurityScopedResource() }
         }
-        defer { url.stopAccessingSecurityScopedResource() }
 
         // ensure the file is one we can parse
         let pathExtension = url.pathExtension.lowercased()
@@ -169,11 +169,11 @@ extension LocalFileManager {
         var url = url
         var shouldRemoveUrl = false
         if !url.path.contains(documentsDirectory.path) {
-            // if the given url comes from an imported file, we need to do this
-            guard url.startAccessingSecurityScopedResource() else {
-                throw LocalFileManagerError.securityScopeDenied
+            // if the given url comes from an imported file that isn't copied, we need to do this
+            let accessGranted = url.startAccessingSecurityScopedResource()
+            defer {
+                if accessGranted { url.stopAccessingSecurityScopedResource() }
             }
-            defer { url.stopAccessingSecurityScopedResource() }
 
             // create a temporary url to copy file to
             guard let tempUrl = FileManager.default.temporaryDirectory?.appendingPathComponent(url.lastPathComponent) else {
@@ -318,12 +318,12 @@ extension LocalFileManager {
             false
         }
         if !hasMangaObject {
-            let cover = coverURL?.absoluteString ?? {
+            let cover = coverURL?.toAidokuImageUrl()?.absoluteString ?? {
                 // if no cover url, try finding one in the directory
                 for ext in Self.allowedImageExtensions {
                     let coverPath = mangaFolder.appendingPathComponent("cover.\(ext)")
                     if coverPath.exists {
-                        return coverPath.absoluteString
+                        return coverPath.toAidokuImageUrl()?.absoluteString
                     }
                 }
                 return nil
@@ -350,6 +350,40 @@ extension LocalFileManager {
             title: title,
             volume: volume,
             chapter: chapter
+        )
+    }
+}
+
+extension LocalFileManager {
+    func setCover(for mangaId: String, image: PlatformImage) async -> String? {
+        let mangaData = await LocalFileDataManager.shared.fetchLocalSeries(id: mangaId)
+
+        // remove the cover image file if it exists
+        if let cover = mangaData?.cover, let url = URL(string: cover) {
+            let fileURL = url.toAidokuFileUrl() ?? url
+            if fileURL.isFileURL {
+                fileURL.removeItem()
+            }
+        }
+
+        // upload the new cover
+        let fileManager = FileManager.default
+        let localFolder = fileManager.documentDirectory.appendingPathComponent("Local", isDirectory: true)
+        let mangaFolder = localFolder.appendingPathComponent(mangaId, isDirectory: true)
+        let coverFileName = "cover.png"
+        let newCoverURL = mangaFolder.appendingPathComponent(coverFileName)
+        do {
+            try image.pngData()?.write(to: newCoverURL)
+        } catch {
+            LogManager.logger.error("Failed to write cover image for manga \(mangaId): \(error)")
+            return nil
+        }
+
+        // set cover image in coredata
+        return await CoreDataManager.shared.setCover(
+            sourceId: LocalSourceRunner.sourceKey,
+            mangaId: mangaId,
+            coverUrl: newCoverURL.toAidokuImageUrl()?.absoluteString
         )
     }
 }

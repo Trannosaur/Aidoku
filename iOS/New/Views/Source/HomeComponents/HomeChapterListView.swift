@@ -105,14 +105,7 @@ struct HomeChapterListView: View {
     @ViewBuilder
     func view(for entry: MangaWithChapter) -> some View {
         Button {
-#if !os(macOS)
-            let hostingController = UIHostingController(
-                rootView: MangaView(source: source, manga: entry.manga)
-                    .environmentObject(path)
-            )
-            hostingController.navigationItem.largeTitleDisplayMode = .never
-            path.push(hostingController)
-#endif
+            path.push(MangaViewController(source: source, manga: entry.manga, parent: path.rootViewController))
         } label: {
             HStack(spacing: 12) {
                 MangaCoverView(

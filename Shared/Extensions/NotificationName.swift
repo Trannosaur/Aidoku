@@ -10,9 +10,12 @@ import Foundation
 extension Notification.Name {
     static let updateSourceLists = Self("updateSourceLists")
 
-    // manga
+    // library
+    static let updateLibrary = Self("updateLibrary")
     static let addToLibrary = Self("addToLibrary")
+    static let removeFromLibrary = Self("removeFromLibrary")
     static let migratedManga = Self("migratedManga")
+    static let updateMangaDetails = Self("updateMangaDetails")
 
     // history
     static let updateHistory = Self("updateHistory")
@@ -33,11 +36,18 @@ extension Notification.Name {
     static let downloadsRemoved = Self("downloadsRemoved")
     static let downloadsCancelled = Self("downloadsCancelled")
     static let downloadsQueued = Self("downloadsQueued")
+    static let downloadsPaused = Self("downloadsPaused")
+    static let downloadsResumed = Self("downloadsResumed")
 
     // browse
     static let browseLanguages = Self("Browse.languages")
 
+    // reader
+    static let readerReadingMode = Self("Reader.readingMode")
+    static let readerTapZones = Self("Reader.tapZones")
+
     // settings
     static let portraitRowsSetting = Self("General.portraitRows")
     static let landscapeRowsSetting = Self("General.landscapeRows")
+    static let historyLockTabSetting = Self("History.lockHistoryTab")
 }

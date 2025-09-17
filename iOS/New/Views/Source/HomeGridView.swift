@@ -54,8 +54,8 @@ struct HomeGridView: View {
             columns: columns,
             spacing: Self.spacing
         ) {
-            ForEach(entries, id: \.hashValue) { entry in
-                mangaGridItem(entry: entry)
+            ForEach(entries.indices, id: \.self) { index in
+                mangaGridItem(entry: entries[index])
             }
             loadMoreView
         }
@@ -82,12 +82,7 @@ struct HomeGridView: View {
             if let onSelect {
                 onSelect(entry)
             } else {
-                let hostingController = UIHostingController(
-                    rootView: MangaView(source: source, manga: entry)
-                        .environmentObject(path)
-                )
-                hostingController.navigationItem.largeTitleDisplayMode = .never
-                path.push(hostingController)
+                path.push(MangaViewController(source: source, manga: entry, parent: path.rootViewController))
             }
         } label: {
             MangaGridItem(
@@ -100,7 +95,7 @@ struct HomeGridView: View {
         .buttonStyle(MangaGridButtonStyle())
         .contextMenu {
             // add a remove button for manga from the local source
-            if entry.sourceKey == "local" {
+            if entry.isLocal() {
                 Button(role: .destructive) {
                     Task {
                         await LocalFileManager.shared.removeManga(with: entry.key)

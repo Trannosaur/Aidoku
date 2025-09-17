@@ -23,7 +23,7 @@ struct AddSourceView: View {
     @State private var showImportFailAlert = false
     @State private var showLanguageSelectSheet = false
 
-    @State private var searchFocused: Bool = false
+    @State private var searchFocused: Bool? = false
 
     @Environment(\.dismiss) private var dismiss
 
@@ -148,6 +148,7 @@ struct AddSourceView: View {
                 text: $searchText,
                 enabled: $searching,
                 focused: $searchFocused,
+                hidesSearchBarWhenScrolling: false,
                 onCancel: {
                     // task delays slightly to prevent sheet from closing
                     Task {
@@ -159,23 +160,20 @@ struct AddSourceView: View {
             .animation(.default, value: searching)
             .sheet(isPresented: $importing) {
                 DocumentPickerView(
-                    allowedContentTypes: [UTType(exportedAs: "app.aidoku.Aidoku.aix", conformingTo: .zip)],
+                    allowedContentTypes: [
+                        UTType(exportedAs: "app.aidoku.Aidoku.aix", conformingTo: .zip),
+                        .init(filenameExtension: "aix")!
+                    ],
                     onDocumentsPicked: { urls in
                         guard let url = urls.first else {
                             return
                         }
                         Task {
-                            if CFURLStartAccessingSecurityScopedResource(url as CFURL) {
-                                let result = try? await SourceManager.shared.importSource(from: url)
-                                if result == nil {
-                                    showImportFailAlert = true
-                                } else {
-                                    dismiss()
-                                }
-                                CFURLStopAccessingSecurityScopedResource(url as CFURL)
-                            } else {
-                                LogManager.logger.error("Unable to access imported file: \(url)")
+                            let result = try? await SourceManager.shared.importSource(from: url)
+                            if result == nil {
                                 showImportFailAlert = true
+                            } else {
+                                dismiss()
                             }
                         }
                     }
@@ -254,10 +252,10 @@ struct AddSourceView: View {
 //                )
 //            }
 
-            if !SourceManager.shared.sources.contains(where: { $0.key == "local" }) {
+            if !SourceManager.shared.sources.contains(where: { $0.key == LocalSourceRunner.sourceKey }) {
                 ExternalSourceTableCell(
                     source: .init(
-                        sourceId: "local",
+                        sourceId: LocalSourceRunner.sourceKey,
                         name: NSLocalizedString("LOCAL_FILES"),
                         languages: ["multi"],
                         version: 1,
