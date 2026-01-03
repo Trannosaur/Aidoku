@@ -10,14 +10,19 @@ import Gifu
 import MarkdownUI
 import Nuke
 import SwiftUI
+import VisionKit
 import ZIPFoundation
 
 class ReaderPageView: UIView {
-
     weak var parent: UIViewController?
 
     let imageView = GIFImageView()
     let progressView = CircularProgressView(frame: CGRect(x: 0, y: 0, width: 40, height: 40))
+
+    @available(iOS 16.0, *)
+    var imageAnalaysisInteraction: ImageAnalysisInteraction? {
+        imageView.interactions.first as? ImageAnalysisInteraction
+    }
 
     private var textView: UIHostingController<MarkdownView>?
 
@@ -25,6 +30,7 @@ class ReaderPageView: UIView {
     private var imageHeightConstraint: NSLayoutConstraint?
     private var imageTask: ImageTask?
     private var sourceId: String?
+    private var shouldShowLiveTextButton = false
 
     private var completion: ((Bool) -> Void)?
 
@@ -52,6 +58,12 @@ class ReaderPageView: UIView {
         progressView.progressColor = tintColor
         progressView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(progressView)
+
+        if #available(iOS 16.0, *), UserDefaults.standard.bool(forKey: "Reader.liveText"), ImageAnalyzer.isSupported {
+            let interaction = ImageAnalysisInteraction()
+            interaction.preferredInteractionTypes = .automatic
+            imageView.addInteraction(interaction)
+        }
 
         imageView.contentMode = .scaleAspectFit
         imageView.isUserInteractionEnabled = true
@@ -87,6 +99,7 @@ class ReaderPageView: UIView {
         if let image = page.image {
             imageView.image = image
             fixImageSize()
+            await analyzeLiveText()
             return true
         } else if let zipURL = page.zipURL, let url = URL(string: zipURL), let filePath = page.imageURL {
             return await setPageImage(zipURL: url, filePath: filePath)
@@ -114,24 +127,24 @@ class ReaderPageView: UIView {
 
         if let imageTask {
             switch imageTask.state {
-            case .running:
-                if completion != nil {
-                    completion!(imageView.image != nil)
-                }
-                return await withCheckedContinuation({ continuation in
-                    self.completion = { success in
-                        self.completion = nil
-                        continuation.resume(returning: success)
+                case .running:
+                    if completion != nil {
+                        completion!(imageView.image != nil)
                     }
-                })
-            case .completed:
-                if imageView.image == nil {
+                    return await withCheckedContinuation({ continuation in
+                        self.completion = { success in
+                            self.completion = nil
+                            continuation.resume(returning: success)
+                        }
+                    })
+                case .completed:
+                    if imageView.image == nil {
+                        request = imageTask.request
+                    } else {
+                        return true
+                    }
+                case .cancelled:
                     request = imageTask.request
-                } else {
-                    return true
-                }
-            case .cancelled:
-                request = imageTask.request
             }
         } else {
             let urlRequest = if let sourceId, let source = SourceManager.shared.source(for: sourceId) {
@@ -141,6 +154,7 @@ class ReaderPageView: UIView {
             }
 
             var processors: [ImageProcessing] = []
+            var usePageProcessor = false
             if
                 let sourceId,
                 let newSource = SourceManager.shared.source(for: sourceId)
@@ -148,6 +162,7 @@ class ReaderPageView: UIView {
                 // only process pages if the source supports it and the image isn't downloaded
                 if newSource.features.processesPages, !url.isFileURL {
                     processors.append(PageInterceptorProcessor(source: newSource))
+                    usePageProcessor = true
                 }
             }
             if UserDefaults.standard.bool(forKey: "Reader.cropBorders") {
@@ -162,7 +177,7 @@ class ReaderPageView: UIView {
             request = ImageRequest(
                 urlRequest: urlRequest,
                 processors: processors,
-                userInfo: [.contextKey: context ?? [:], .processesKey: true]
+                userInfo: [.contextKey: context ?? [:], .processesKey: usePageProcessor]
             )
         }
 
@@ -201,32 +216,36 @@ class ReaderPageView: UIView {
                 imageView.animate(withGIFData: data)
             }
             fixImageSize()
+            await analyzeLiveText()
             completion?(true)
             return true
         } catch {
             let error = error as? ImagePipeline.Error
-            switch error {
-                case .dataLoadingFailed, .dataIsEmpty:
-                    // we can still send to image processor even if the request failed
-                    if request.userInfo[.processesKey] as? Bool == true {
-                        let processor = request.processors.first(where: { $0 is PageInterceptorProcessor }) as? PageInterceptorProcessor
-                        if let processor {
-                            let result = await Task.detached {
+
+            // we can still send to image processor even if the request failed
+            if request.userInfo[.processesKey] as? Bool == true {
+                let processor = request.processors.first(where: { $0 is PageInterceptorProcessor }) as? PageInterceptorProcessor
+                if let processor {
+                    let result: Nuke.ImageContainer?
+                    switch error {
+                        case .dataLoadingFailed, .dataIsEmpty, .decodingFailed:
+                            result = await Task.detached {
                                 try? processor.processWithoutImage(request: request)
                             }.value
-                            if let result {
-                                imageView.image = result.image
-                                if result.type == .gif, let data = result.data {
-                                    imageView.animate(withGIFData: data)
-                                }
-                                fixImageSize()
-                                completion?(true)
-                                return true
-                            }
-                        }
+                        default:
+                            result = nil
                     }
-                default:
-                    break
+                    if let result {
+                        imageView.image = result.image
+                        if result.type == .gif, let data = result.data {
+                            imageView.animate(withGIFData: data)
+                        }
+                        fixImageSize()
+                        await analyzeLiveText()
+                        completion?(true)
+                        return true
+                    }
+                }
             }
             completion?(false)
             return false
@@ -241,7 +260,8 @@ class ReaderPageView: UIView {
             self.textView = nil
         }
 
-        let request = ImageRequest(id: String(key), data: { Data() })
+        let fullKey = "\(key)-\(ImageProcessingSettingsKey.getProcessorSettingsKey())"
+        let request = ImageRequest(id: fullKey, data: { Data() })
 
         // Store current image request for reload functionality
         self.currentImageRequest = request
@@ -254,6 +274,7 @@ class ReaderPageView: UIView {
             let imageContainer = ImagePipeline.shared.cache.cachedImage(for: request)
             imageView.image = imageContainer?.image
             fixImageSize()
+            await analyzeLiveText()
             return true
         }
 
@@ -290,24 +311,19 @@ class ReaderPageView: UIView {
         ImagePipeline.shared.cache.storeCachedImage(ImageContainer(image: image), for: request)
         imageView.image = image
         fixImageSize()
+        await analyzeLiveText()
 
         return true
     }
 
     func setPageImage(zipURL: URL, filePath: String) async -> Bool {
-        // remove text view if it exists
-        if let textView {
-            textView.view.removeFromSuperview()
-            textView.didMove(toParent: nil)
-            self.textView = nil
-        }
-
         var hasher = Hasher()
         hasher.combine(zipURL)
         hasher.combine(filePath)
         let key = String(hasher.finalize())
 
-        let request = ImageRequest(id: key, data: { Data() })
+        let fullKey = "\(key)-\(ImageProcessingSettingsKey.getProcessorSettingsKey())"
+        let request = ImageRequest(id: fullKey, data: { Data() })
 
         // Store current image request for reload functionality
         self.currentImageRequest = request
@@ -320,56 +336,77 @@ class ReaderPageView: UIView {
             let imageContainer = ImagePipeline.shared.cache.cachedImage(for: request)
             imageView.image = imageContainer?.image
             fixImageSize()
+            await analyzeLiveText()
             return true
         }
 
-        let image: UIImage? = await Task.detached {
+        let result: (data: Data, isText: Bool)? = await Task.detached {
             do {
-                var imageData = Data()
-                let archive: Archive
-                archive = try Archive(url: zipURL, accessMode: .read)
-                guard let entry = archive[filePath]
-                else {
+                var data = Data()
+                let archive = try Archive(url: zipURL, accessMode: .read)
+                guard let entry = archive[filePath] else {
                     return nil
                 }
                 _ = try archive.extract(
                     entry,
-                    consumer: { data in
-                        imageData.append(data)
+                    consumer: { readData in
+                        data.append(readData)
                     }
                 )
-                guard var image = UIImage(data: imageData) else {
-                    return nil
-                }
-
-                if UserDefaults.standard.bool(forKey: "Reader.cropBorders") {
-                    let processor = CropBordersProcessor()
-                    if let processedImage = processor.process(image) {
-                        image = processedImage
-                    }
-                }
-                if UserDefaults.standard.bool(forKey: "Reader.downsampleImages") {
-                    let processor = await DownsampleProcessor(width: UIScreen.main.bounds.width)
-                    if let processedImage = processor.process(image) {
-                        image = processedImage
-                    }
-                } else if UserDefaults.standard.bool(forKey: "Reader.upscaleImages") {
-                    let processor = UpscaleProcessor()
-                    if let processedImage = processor.process(image) {
-                        image = processedImage
-                    }
-                }
-
-                return image
+                return (data, entry.path.hasSuffix(".txt"))
             } catch {
                 return nil
             }
+        }.value
+
+        guard let result else { return false }
+
+        if result.isText, let text = String(data: result.data, encoding: .utf8) {
+            setPageText(text: text)
+            return true
+        }
+
+        // remove text view if it exists
+        if let textView {
+            textView.view.removeFromSuperview()
+            textView.didMove(toParent: nil)
+            self.textView = nil
+        }
+
+        let image: UIImage? = await Task.detached {
+            guard var image = UIImage(data: result.data) else {
+                return nil
+            }
+
+            if UserDefaults.standard.bool(forKey: "Reader.cropBorders") {
+                let processor = CropBordersProcessor()
+                if let processedImage = processor.process(image) {
+                    image = processedImage
+                }
+            }
+            if UserDefaults.standard.bool(forKey: "Reader.downsampleImages") {
+                let processor = await DownsampleProcessor(width: UIScreen.main.bounds.width)
+                if let processedImage = processor.process(image) {
+                    image = processedImage
+                }
+            } else if UserDefaults.standard.bool(forKey: "Reader.upscaleImages") {
+                let processor = UpscaleProcessor()
+                if let processedImage = processor.process(image) {
+                    image = processedImage
+                }
+            }
+
+            return image
         }.value
         guard let image else { return false }
 
         ImagePipeline.shared.cache.storeCachedImage(ImageContainer(image: image), for: request)
         imageView.image = image
+        if filePath.pathExtension().lowercased() == "gif" {
+            imageView.animate(withGIFData: result.data)
+        }
         fixImageSize()
+        await analyzeLiveText()
 
         return true
     }
@@ -441,10 +478,32 @@ class ReaderPageView: UIView {
         }
     }
 
-    // MARK: - Image Reload Functionality
+    private func analyzeLiveText() async {
+        if #available(iOS 16.0, *) {
+            guard let image = imageView.image else {
+                imageAnalaysisInteraction?.analysis = nil
+                return
+            }
+            let analyzer = ImageAnalyzer()
+            let analysis = try? await analyzer.analyze(image, configuration: .init([.text, .machineReadableCode]))
+            imageAnalaysisInteraction?.analysis = analysis
+            imageAnalaysisInteraction?.isSupplementaryInterfaceHidden = !shouldShowLiveTextButton
+        }
+    }
 
+    func setLiveTextHidden(_ hidden: Bool) {
+        if #available(iOS 16.0, *) {
+            shouldShowLiveTextButton = !hidden
+            // don't hide if the text highlighting is active
+            guard imageAnalaysisInteraction?.selectableItemsHighlighted == false else { return }
+            imageAnalaysisInteraction?.isSupplementaryInterfaceHidden = hidden
+        }
+    }
+}
+
+// MARK: - Image Reload Functionality
+extension ReaderPageView {
     /// Reloads the current image by clearing its cache and re-fetching from the source
-    @MainActor
     func reloadCurrentImage() async -> Bool {
         guard let currentPage else {
             return false
@@ -464,6 +523,7 @@ class ReaderPageView: UIView {
     private func clearCurrentImageCache() {
         guard let currentPage else { return }
 
+        let settingsKey = ImageProcessingSettingsKey.getProcessorSettingsKey()
         // Handle different image types
         if currentPage.imageURL != nil {
             // For URL-based images, use the stored request if available
@@ -473,7 +533,8 @@ class ReaderPageView: UIView {
         }
         if currentPage.base64 != nil {
             // For base64 images
-            let request = ImageRequest(id: String(currentPage.hashValue), data: { Data() })
+            let fullKey = "\(currentPage.hashValue)-\(settingsKey)"
+            let request = ImageRequest(id: fullKey, data: { Data() })
             ImagePipeline.shared.cache.removeCachedImage(for: request)
         }
         if let zipURL = currentPage.zipURL, let url = URL(string: zipURL), let filePath = currentPage.imageURL {
@@ -482,8 +543,40 @@ class ReaderPageView: UIView {
             hasher.combine(url)
             hasher.combine(filePath)
             let key = String(hasher.finalize())
-            let request = ImageRequest(id: key, data: { Data() })
+            let fullKey = "\(key)-\(settingsKey)"
+            let request = ImageRequest(id: fullKey, data: { Data() })
             ImagePipeline.shared.cache.removeCachedImage(for: request)
         }
+    }
+
+    /// Splits the current image into left and right halves
+    func splitImage() -> (left: UIImage?, right: UIImage?) {
+        guard let image = imageView.image else { return (nil, nil) }
+
+        let imageSize = image.size
+        let imageScale = image.scale
+
+        // Calculate the split point (middle of the image)
+        let splitX = imageSize.width / 2
+
+        // Create left half rect
+        let leftRect = CGRect(x: 0, y: 0, width: splitX, height: imageSize.height)
+
+        // Create right half rect
+        let rightRect = CGRect(x: splitX, y: 0, width: splitX, height: imageSize.height)
+
+        // Extract left half
+        guard let leftCGImage = image.cgImage?.cropping(to: leftRect) else {
+            return (nil, nil)
+        }
+        let leftImage = UIImage(cgImage: leftCGImage, scale: imageScale, orientation: image.imageOrientation)
+
+        // Extract right half
+        guard let rightCGImage = image.cgImage?.cropping(to: rightRect) else {
+            return (nil, nil)
+        }
+        let rightImage = UIImage(cgImage: rightCGImage, scale: imageScale, orientation: image.imageOrientation)
+
+        return (leftImage, rightImage)
     }
 }

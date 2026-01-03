@@ -7,14 +7,14 @@
 
 import Foundation
 
-class ShikimoriApi {
+actor ShikimoriApi {
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
     private let userAgent = "Aidoku"
     private let dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
 
     // Registered under Skitty's Shikimori account
-    var oauth = OAuthClient(
+    nonisolated let oauth = OAuthClient(
         id: "shikimori",
         clientId: "0pRPZsB87w9mp0gQe1HZbSiGt7FfVzJohPGhJKjayW4",
         clientSecret: "42vg9aoyPBnrvFoH1ey2GxbO24eVufOe8D0B6P756e8",
@@ -23,17 +23,9 @@ class ShikimoriApi {
 }
 
 extension ShikimoriApi {
-    func getAuthenticationUrl() -> String? {
-        guard let url = URL(string: oauth.baseUrl + "/oauth/authorize") else { return nil }
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
-        let queryItems = [
-            URLQueryItem(name: "client_id", value: oauth.clientId),
-            URLQueryItem(name: "redirect_uri", value: "aidoku://shikimori-auth"),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: "user_rates")
-        ]
-        components?.queryItems = queryItems
-        return components?.url?.absoluteString
+    func getAuthenticationUrl() async -> String? {
+        guard let baseUrl = await oauth.getAuthenticationUrl(responseType: "code", redirectUri: "aidoku://shikimori-auth") else { return nil }
+        return baseUrl.absoluteString + "&scope=user_rates"
     }
 
     func getAccessToken(authCode: String) async -> OAuthResponse? {
@@ -52,9 +44,29 @@ extension ShikimoriApi {
             "scope": "users_rate",
             "code": authCode
         ], boundary: boundary)
-        oauth.tokens = try? await URLSession.shared.object(from: request)
-        oauth.saveTokens()
-        return oauth.tokens
+        let response: OAuthResponse? = try? await URLSession.shared.object(from: request)
+        await oauth.setTokens(response)
+        return response
+    }
+
+    func refreshAccessToken() async -> OAuthResponse? {
+        guard let refreshToken = await oauth.tokens?.refreshToken else { return nil }
+
+        guard let url = URL(string: oauth.baseUrl + "/oauth/token") else { return nil }
+        var request = URLRequest(url: url)
+        let boundary = "--" + String(UUID().hashValue)
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.httpMethod = "POST"
+        request.httpBody = multipart(params: [
+            "client_id": oauth.clientId,
+            "client_secret": oauth.clientSecret!,
+            "refresh_token": refreshToken,
+            "grant_type": "refresh_token"
+        ], boundary: boundary)
+        let response: OAuthResponse? = try? await URLSession.shared.object(from: request)
+        await oauth.setTokens(response)
+        return response
     }
 
     // MARK: API Methods - Data
@@ -83,7 +95,7 @@ extension ShikimoriApi {
 
         guard var url = URL(string: oauth.baseUrl + "/api/v2/user_rates") else { return nil }
         url.queryParameters = query
-        var request = authorizedRequest(for: url)
+        var request = await authorizedRequest(for: url)
         request.httpMethod = "POST"
 
         guard
@@ -111,7 +123,7 @@ extension ShikimoriApi {
 
         guard var url = URL(string: oauth.baseUrl + "/api/v2/user_rates/\(trackId)") else { return }
         url.queryParameters = query
-        var request = authorizedRequest(for: url)
+        var request = await authorizedRequest(for: url)
         request.httpMethod = "PATCH"
 
         do {
@@ -219,15 +231,8 @@ private extension ShikimoriApi {
         return try? await URLSession.shared.object(from: request)
     }
 
-    func authorizedRequest(for url: URL) -> URLRequest {
-        if oauth.tokens == nil { oauth.loadTokens() }
-        var request = URLRequest(url: url)
-        request.addValue(
-            "Bearer \(oauth.tokens?.accessToken ?? "")",
-            forHTTPHeaderField: "Authorization"
-        )
-        request.addValue(userAgent, forHTTPHeaderField: "User-Agent")
-        return request
+    func authorizedRequest(for url: URL) async -> URLRequest {
+        await oauth.authorizedRequest(for: url, additionalHeaders: ["User-Agent": userAgent])
     }
 
     @discardableResult
@@ -235,34 +240,31 @@ private extension ShikimoriApi {
         var (data, response) = try await URLSession.shared.data(for: urlRequest)
         let statusCode = (response as? HTTPURLResponse)?.statusCode
 
-        if oauth.tokens == nil {
-            oauth.loadTokens()
+        if await oauth.tokens == nil {
+            await oauth.loadTokens()
         }
 
-        // check if token expired
-        if statusCode == 401 || oauth.tokens!.expired {
-            // refresh access token
-            guard let url = URL(string: oauth.baseUrl + "/oauth/token") else { return data }
-            var request = URLRequest(url: url)
-            let boundary = "--" + String(UUID().hashValue)
-            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-            request.httpMethod = "POST"
-            request.httpBody = multipart(params: [
-                "client_id": oauth.clientId,
-                "client_secret": oauth.clientSecret!,
-                "refresh_token": oauth.tokens?.refreshToken ?? "",
-                "grant_type": "refresh_token"
-            ], boundary: boundary)
-            oauth.tokens = try await URLSession.shared.object(from: request)
-            oauth.saveTokens()
+        let tokenExpired = await oauth.tokens?.expired == true
 
-            // try request again
-            if let newAuthorization = URLRequest(url: url).value(forHTTPHeaderField: "Authorization") {
-                var newRequest = urlRequest
-                newRequest.setValue(newAuthorization, forHTTPHeaderField: "Authorization")
-                newRequest.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-                (data, _) = try await URLSession.shared.data(for: newRequest)
+        // check if token expired
+        if statusCode == 401 || tokenExpired {
+            // ensure we have a refresh token, otherwise we need to fully re-auth
+            let reloginNeeded = await oauth.checkIfReloginNeeded(trackerName: "Shikimori")
+            guard !reloginNeeded else {
+                return data
+            }
+
+            // refresh access token
+            if await refreshAccessToken() != nil {
+                // try request again with refreshed token
+                let retryUrl = URL(string: oauth.baseUrl + "/oauth/token")!
+                let newRequest = await authorizedRequest(for: retryUrl)
+                if let newAuthorization = newRequest.value(forHTTPHeaderField: "Authorization") {
+                    var retryRequest = urlRequest
+                    retryRequest.setValue(newAuthorization, forHTTPHeaderField: "Authorization")
+                    retryRequest.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+                    (data, _) = try await URLSession.shared.data(for: retryRequest)
+                }
             }
         }
 

@@ -5,68 +5,180 @@
 //  Created by Skitty on 7/25/22.
 //
 
-import Foundation
+import AidokuRunner
 import CoreData
+import UIKit
 
 @MainActor
 class LibraryViewModel {
-
     var manga: [MangaInfo] = []
     var pinnedManga: [MangaInfo] = []
+    var sourceKeys: [String] = []
 
     // temporary storage when searching
     private var storedManga: [MangaInfo]?
     private var storedPinnedManga: [MangaInfo]?
 
-    enum PinType {
+    enum PinType: String, CaseIterable {
         case none
         case unread
-        case updated
+        case updatedChapters
+
+        var title: String {
+            switch self {
+                case .none: NSLocalizedString("PIN_DISABLED")
+                case .unread: NSLocalizedString("PIN_UNREAD")
+                case .updatedChapters: NSLocalizedString("PIN_UPDATED_CHAPTERS")
+            }
+        }
+
+        var needsUpdateOnContentOpen: Bool {
+            switch self {
+                case .none: false
+                case .unread: false
+                case .updatedChapters: true
+            }
+        }
     }
 
-    enum SortMethod: Int {
+    enum SortMethod: Int, CaseIterable {
         case alphabetical = 0
         case lastRead
         case lastOpened
         case lastUpdated
         case dateAdded
+        case lastChapter
         case unreadChapters
         case totalChapters
 
+        var title: String {
+            switch self {
+                case .alphabetical: NSLocalizedString("TITLE")
+                case .lastRead: NSLocalizedString("LAST_READ")
+                case .lastOpened: NSLocalizedString("LAST_OPENED")
+                case .lastUpdated: NSLocalizedString("LAST_UPDATED")
+                case .dateAdded: NSLocalizedString("DATE_ADDED")
+                case .lastChapter: NSLocalizedString("LATEST_CHAPTER")
+                case .unreadChapters: NSLocalizedString("UNREAD_CHAPTERS")
+                case .totalChapters: NSLocalizedString("TOTAL_CHAPTERS")
+            }
+        }
+
+        var descendingTitle: String {
+            switch self {
+                case .alphabetical: NSLocalizedString("ASCENDING") // reverse default for alphabetical sort
+                case .lastRead: NSLocalizedString("NEWEST_FIRST")
+                case .lastOpened: NSLocalizedString("NEWEST_FIRST")
+                case .lastUpdated: NSLocalizedString("NEWEST_FIRST")
+                case .dateAdded: NSLocalizedString("NEWEST_FIRST")
+                case .lastChapter: NSLocalizedString("NEWEST_FIRST")
+                case .unreadChapters: NSLocalizedString("HIGHEST_FIRST")
+                case .totalChapters: NSLocalizedString("HIGHEST_FIRST")
+            }
+        }
+
+        var ascendingTitle: String {
+            switch self {
+                case .alphabetical: NSLocalizedString("DESCENDING")
+                case .lastRead: NSLocalizedString("OLDEST_FIRST")
+                case .lastOpened: NSLocalizedString("OLDEST_FIRST")
+                case .lastUpdated: NSLocalizedString("OLDEST_FIRST")
+                case .dateAdded: NSLocalizedString("OLDEST_FIRST")
+                case .lastChapter: NSLocalizedString("OLDEST_FIRST")
+                case .unreadChapters: NSLocalizedString("LOWEST_FIRST")
+                case .totalChapters: NSLocalizedString("LOWEST_FIRST")
+            }
+        }
+
         var sortStringValue: String {
             switch self {
-            case .alphabetical: "manga.title"
-            case .lastRead: "lastRead"
-            case .lastOpened: "lastOpened"
-            case .lastUpdated: "lastUpdated"
-            case .dateAdded: "dateAdded"
-            case .unreadChapters: ""
-            case .totalChapters: "manga.chapterCount"
+                case .alphabetical: "manga.title"
+                case .lastRead: "lastRead"
+                case .lastOpened: "lastOpened"
+                case .lastUpdated: "lastUpdated"
+                case .dateAdded: "dateAdded"
+                case .lastChapter: "lastChapter"
+                case .unreadChapters: ""
+                case .totalChapters: "manga.chapterCount"
             }
         }
     }
 
-    enum BadgeType {
-        case none
-        case unread
+    struct BadgeType: OptionSet {
+        let rawValue: Int
+
+        static let unread = BadgeType(rawValue: 1 << 0)
+        static let downloaded = BadgeType(rawValue: 1 << 1)
     }
 
-    struct LibraryFilter {
+    struct LibraryFilter: Codable {
         var type: FilterMethod
+        var value: String?
         var exclude: Bool
     }
 
-    enum FilterMethod: Int {
-        case downloaded = 0
+    enum FilterMethod: Int, Codable, CaseIterable {
+        case downloaded
         case tracking
+        case hasUnread
+        case started
+        case completed
+        case source
+        case contentRating
+
+        var title: String {
+            switch self {
+                case .downloaded: NSLocalizedString("DOWNLOADED")
+                case .tracking: NSLocalizedString("IS_TRACKING")
+                case .hasUnread: NSLocalizedString("FILTER_HAS_UNREAD")
+                case .started: NSLocalizedString("FILTER_STARTED")
+                case .completed: NSLocalizedString("COMPLETED")
+                case .source: NSLocalizedString("SOURCES")
+                case .contentRating: NSLocalizedString("CONTENT_RATING")
+            }
+        }
+
+        var image: UIImage? {
+            let name = switch self {
+                case .downloaded: "arrow.down.circle"
+                case .tracking: "clock.arrow.trianglehead.2.counterclockwise.rotate.90"
+                case .hasUnread: "eye.slash"
+                case .started: "clock"
+                case .completed: "checkmark.circle"
+                case .source: "globe"
+                case .contentRating: "exclamationmark.triangle.fill"
+            }
+            return UIImage(systemName: name)
+        }
+
+        var isAvailable: Bool {
+            switch self {
+                case .tracking: TrackerManager.hasAvailableTrackers
+                case .source, .contentRating: false // needs custom handling
+                default: true
+            }
+        }
     }
 
     lazy var pinType: PinType = getPinType()
     lazy var sortMethod = SortMethod(rawValue: UserDefaults.standard.integer(forKey: "Library.sortOption")) ?? .lastOpened
     lazy var sortAscending = UserDefaults.standard.bool(forKey: "Library.sortAscending")
-    lazy var badgeType: BadgeType = UserDefaults.standard.bool(forKey: "Library.unreadChapterBadges") ? .unread : .none
+    lazy var badgeType: BadgeType = {
+        var type: BadgeType = []
+        if UserDefaults.standard.bool(forKey: "Library.unreadChapterBadges") {
+            type.insert(.unread)
+        }
+        if UserDefaults.standard.bool(forKey: "Library.downloadedChapterBadges") {
+            type.insert(.downloaded)
+        }
+        return type
+    }()
 
-    var filters: [LibraryFilter] = []
+    var filters: [LibraryFilter] {
+        didSet {
+            saveFilters()
+        }
+    }
 
     var categories: [String] = []
     lazy var currentCategory: String? = UserDefaults.standard.string(forKey: "Library.currentCategory") {
@@ -74,7 +186,20 @@ class LibraryViewModel {
             UserDefaults.standard.set(currentCategory, forKey: "Library.currentCategory")
         }
     }
+    private(set) var actuallyEmpty = true
 
+    init() {
+        let filtersData = UserDefaults.standard.data(forKey: "Library.filters")
+        if let filtersData {
+            let filters = try? JSONDecoder().decode([LibraryFilter].self, from: filtersData)
+            self.filters = filters ?? []
+        } else {
+            self.filters = []
+        }
+    }
+}
+
+extension LibraryViewModel {
     func isCategoryLocked() -> Bool {
         guard UserDefaults.standard.bool(forKey: "Library.lockLibrary") else { return false }
         if let currentCategory = currentCategory {
@@ -84,15 +209,7 @@ class LibraryViewModel {
     }
 
     func getPinType() -> PinType {
-        if UserDefaults.standard.bool(forKey: "Library.pinManga") {
-            switch UserDefaults.standard.integer(forKey: "Library.pinMangaType") {
-            case 0: return .unread
-            case 1: return .updated
-            default: return .none
-            }
-        } else {
-            return .none
-        }
+        UserDefaults.standard.string(forKey: "Library.pinTitles").flatMap(PinType.init) ?? .none
     }
 
     func refreshCategories() async {
@@ -105,6 +222,7 @@ class LibraryViewModel {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func loadLibrary() async {
         let currentCategory = self.currentCategory
         let sortMethod = self.sortMethod
@@ -112,17 +230,18 @@ class LibraryViewModel {
         let filters = self.filters
         let pinType = self.pinType
 
-        var (
+        let (
             success,
+            actuallyEmpty,
             pinnedManga,
             manga,
-            checkDownloads,
-            excludeDownloads
+            sourceKeys,
+            unappliedFilters
         ) = await CoreDataManager.shared.container.performBackgroundTask { @Sendable context in
             var pinnedManga: [MangaInfo] = []
             var manga: [MangaInfo] = []
-            var checkDownloads = false
-            var excludeDownloads = false
+            var sourceKeys: Set<String> = []
+            var unappliedFilters: [LibraryFilter] = []
 
             let request = LibraryMangaObject.fetchRequest()
             if let currentCategory {
@@ -139,8 +258,10 @@ class LibraryViewModel {
                 ]
             }
             guard let libraryObjects = try? context.fetch(request) else {
-                return (false, pinnedManga, manga, checkDownloads, excludeDownloads)
+                return (false, true, pinnedManga, manga, sourceKeys, unappliedFilters)
             }
+
+            let actuallyEmpty = libraryObjects.isEmpty
 
             var ids = Set<String>()
 
@@ -151,84 +272,134 @@ class LibraryViewModel {
                     ids.insert("\(mangaObject.sourceId)|\(mangaObject.id)").inserted
                 else { continue }
 
-                let unreadCount = CoreDataManager.shared.unreadCount(
-                    sourceId: mangaObject.sourceId,
-                    mangaId: mangaObject.id,
-                    lang: mangaObject.langFilter,
-                    scanlators: mangaObject.scanlatorFilter,
-                    context: context
-                )
-
                 let info = MangaInfo(
                     mangaId: mangaObject.id,
                     sourceId: mangaObject.sourceId,
-                    coverUrl: mangaObject.cover != nil ? URL(string: mangaObject.cover!) : nil,
+                    coverUrl: mangaObject.cover.flatMap { URL(string: $0) },
                     title: mangaObject.title,
                     author: mangaObject.author,
-                    url: mangaObject.url != nil ? URL(string: mangaObject.url!) : nil,
-                    unread: unreadCount
+                    url: mangaObject.url.flatMap { URL(string: $0) }
                 )
 
+                sourceKeys.insert(mangaObject.sourceId)
+
                 // process filters
+                var filteredSourceKeys: Set<String> = []
+                var filteredContentRatings: Set<Int16> = []
                 for filter in filters {
                     let condition: Bool
                     switch filter.type {
-                    case .downloaded:
-                        checkDownloads = true
-                        excludeDownloads = filter.exclude
-                        continue
-                    case .tracking:
-                        condition = TrackerManager.shared.isTracking(sourceId: info.sourceId, mangaId: info.mangaId)
+                        case .downloaded:
+                            unappliedFilters.append(filter)
+                            continue
+                        case .tracking:
+                            condition = CoreDataManager.shared.hasTrack(
+                                sourceId: info.sourceId,
+                                mangaId: info.mangaId,
+                                context: context
+                            )
+                        case .hasUnread:
+                            unappliedFilters.append(filter)
+                            continue
+                        case .started:
+                            condition = CoreDataManager.shared.hasHistory(
+                                sourceId: info.sourceId,
+                                mangaId: info.mangaId,
+                                context: context
+                            )
+                        case .completed:
+                            condition = mangaObject.status == AidokuRunner.PublishingStatus.completed.rawValue
+                        case .source:
+                            guard let sourceId = filter.value else { continue }
+                            if filter.exclude {
+                                condition = info.sourceId == sourceId
+                            } else {
+                                // handle included source filters as OR
+                                filteredSourceKeys.insert(sourceId)
+                                continue
+                            }
+                        case .contentRating:
+                            guard let contentRating = filter.value.flatMap(MangaContentRating.init) else { continue }
+                            if filter.exclude {
+                                condition = mangaObject.nsfw == contentRating.rawValue
+                            } else {
+                                // handle included content rating filters as OR
+                                filteredContentRatings.insert(Int16(contentRating.rawValue))
+                                continue
+                            }
                     }
                     let shouldSkip = filter.exclude ? condition : !condition
                     if shouldSkip {
                         continue main
                     }
                 }
+                if !filteredSourceKeys.isEmpty && !filteredSourceKeys.contains(info.sourceId) {
+                    continue main
+                }
+                if !filteredContentRatings.isEmpty && !filteredContentRatings.contains(mangaObject.nsfw) {
+                    continue main
+                }
 
                 switch pinType {
-                case .none:
-                    manga.append(info)
-                case .unread:
-                    if info.unread > 0 {
-                        pinnedManga.append(info)
-                    } else {
+                    case .none:
                         manga.append(info)
-                    }
-                case .updated:
-                    if libraryObject.lastUpdated > libraryObject.lastOpened {
-                        pinnedManga.append(info)
-                    } else {
+                    case .unread:
+                        // don't have unread info to sort yet
                         manga.append(info)
-                    }
+                    case .updatedChapters:
+                        if libraryObject.lastUpdatedChapters > libraryObject.lastOpened {
+                            pinnedManga.append(info)
+                        } else {
+                            manga.append(info)
+                        }
                 }
             }
 
-            return (true, pinnedManga, manga, checkDownloads, excludeDownloads)
+            return (true, actuallyEmpty, pinnedManga, manga, sourceKeys, unappliedFilters)
         }
 
         guard success else { return }
 
-        if checkDownloads {
-            let pinnedMangaCopy = pinnedManga
-            let mangaCopy = manga
-            let exclude = excludeDownloads
-            (pinnedManga, manga) = await MainActor.run {
-                (
-                    pinnedMangaCopy.filter { info in
-                        let condition = DownloadManager.shared.hasDownloadedChapter(sourceId: info.sourceId, mangaId: info.mangaId)
-                        return exclude ? !condition : condition
-                    },
-                    mangaCopy.filter { info in
-                        let condition = DownloadManager.shared.hasDownloadedChapter(sourceId: info.sourceId, mangaId: info.mangaId)
-                        return exclude ? !condition : condition
-                    }
-                )
-            }
-        }
-
         self.pinnedManga = pinnedManga
         self.manga = manga
+        self.sourceKeys = sourceKeys.sorted()
+        self.actuallyEmpty = actuallyEmpty
+
+        await fetchUnreads(skipSortCheck: true)
+        await fetchDownloadCounts()
+
+        if !unappliedFilters.isEmpty {
+            let filter: (MangaInfo) -> Bool = { info in
+                for filter in unappliedFilters {
+                    let condition: Bool
+                    switch filter.type {
+                        case .downloaded: condition = info.downloads > 0
+                        case .hasUnread: condition = info.unread > 0
+                        default: continue
+                    }
+                    let shouldSkip = filter.exclude ? condition : !condition
+                    guard !shouldSkip else { return false }
+                }
+                return true
+            }
+            self.pinnedManga = self.pinnedManga.filter(filter)
+            self.manga = self.manga.filter(filter)
+        }
+
+        if pinType == .unread {
+            let currentManga = self.manga + self.pinnedManga
+            var pinnedManga: [MangaInfo] = []
+            var manga: [MangaInfo] = []
+            for item in currentManga {
+                if item.unread > 0 {
+                    pinnedManga.append(item)
+                } else {
+                    manga.append(item)
+                }
+            }
+            self.pinnedManga = pinnedManga
+            self.manga = manga
+        }
 
         if sortMethod == .unreadChapters {
             await sortLibrary()
@@ -297,27 +468,43 @@ class LibraryViewModel {
         }
     }
 
-    func fetchUnreads() async {
+    func fetchUnreads(skipSortCheck: Bool = false) async {
+        if !skipSortCheck && pinType == .unread {
+            // re-load library to ensure pinned manga is correct
+            return await loadLibrary()
+        }
+
         let currentManga = self.manga + self.pinnedManga
+
         // fetch new unread counts
-        let unreadCounts = await CoreDataManager.shared.container.performBackgroundTask { @Sendable context in
+        let unreadCounts = await withTaskGroup(of: (Int, Int).self) { group in
             var unreadCounts: [Int: Int] = [:]
             for manga in currentManga {
-                let filters = CoreDataManager.shared.getMangaChapterFilters(
-                    sourceId: manga.sourceId,
-                    mangaId: manga.mangaId,
-                    context: context
-                )
-                unreadCounts[manga.hashValue] = CoreDataManager.shared.unreadCount(
-                    sourceId: manga.sourceId,
-                    mangaId: manga.mangaId,
-                    lang: filters.language,
-                    scanlators: filters.scanlators,
-                    context: context
-                )
+                group.addTask {
+                    let context = CoreDataManager.shared.container.newBackgroundContext()
+                    return context.performAndWait {
+                        let filters = CoreDataManager.shared.getMangaChapterFilters(
+                            sourceId: manga.sourceId,
+                            mangaId: manga.mangaId,
+                            context: context
+                        )
+                        let count = CoreDataManager.shared.unreadCount(
+                            sourceId: manga.sourceId,
+                            mangaId: manga.mangaId,
+                            lang: filters.language,
+                            scanlators: filters.scanlators,
+                            context: context
+                        )
+                        return (manga.hashValue, count)
+                    }
+                }
+            }
+            for await (key, count) in group {
+                unreadCounts[key] = count
             }
             return unreadCounts
         }
+
         // set unread counts
         for (i, manga) in self.manga.enumerated() {
             guard let count = unreadCounts[manga.hashValue] else { continue }
@@ -327,82 +514,149 @@ class LibraryViewModel {
             guard let count = unreadCounts[manga.hashValue] else { continue }
             self.pinnedManga[i].unread = count
         }
+
         // re-sort library if needed
-        if pinType == .unread {
-            await loadLibrary()
-        } else if sortMethod == .unreadChapters {
+        if !skipSortCheck && sortMethod == .unreadChapters {
             await sortLibrary()
+        }
+    }
+
+    func fetchUnreads(for identifier: MangaIdentifier) async {
+        let unreadCount = await CoreDataManager.shared.container.performBackgroundTask { @Sendable context in
+            let filters = CoreDataManager.shared.getMangaChapterFilters(
+                sourceId: identifier.sourceKey,
+                mangaId: identifier.mangaKey,
+                context: context
+            )
+            return CoreDataManager.shared.unreadCount(
+                sourceId: identifier.sourceKey,
+                mangaId: identifier.mangaKey,
+                lang: filters.language,
+                scanlators: filters.scanlators,
+                context: context
+            )
+        }
+        var didUpdate = false
+        if let index = self.manga.firstIndex(where: { $0.identifier == identifier }) {
+            if self.manga[index].unread != unreadCount {
+                didUpdate = true
+                self.manga[index].unread = unreadCount
+            }
+        } else if let index = self.pinnedManga.firstIndex(where: { $0.identifier == identifier }) {
+            if self.pinnedManga[index].unread != unreadCount {
+                didUpdate = true
+                self.pinnedManga[index].unread = unreadCount
+            }
+        }
+        // re-sort library if needed
+        if didUpdate {
+            if pinType == .unread {
+                await loadLibrary()
+            } else if sortMethod == .unreadChapters {
+                await sortLibrary()
+            }
+        }
+    }
+
+    func fetchDownloadCounts(for identifier: MangaIdentifier? = nil) async {
+        var downloadCounts: [MangaIdentifier: Int] = [:]
+        if let identifier {
+            downloadCounts[identifier] = await DownloadManager.shared.downloadsCount(for: identifier)
+        } else {
+            let currentManga = self.manga + self.pinnedManga
+            for manga in currentManga {
+                let identifier = manga.identifier
+                downloadCounts[identifier] = await DownloadManager.shared.downloadsCount(for: identifier)
+            }
+        }
+        for (i, manga) in self.pinnedManga.enumerated() {
+            if let count = downloadCounts[manga.identifier] {
+                self.pinnedManga[i].downloads = count
+            }
+        }
+        for (i, manga) in self.manga.enumerated() {
+            if let count = downloadCounts[manga.identifier] {
+                self.manga[i].downloads = count
+            }
         }
     }
 
     @MainActor
     func sortLibrary() async {
         switch sortMethod {
-        case .alphabetical:
-            if sortAscending {
-                pinnedManga.sort { $0.title ?? "" > $1.title ?? "" }
-                manga.sort { $0.title ?? "" > $1.title ?? "" }
-            } else {
-                pinnedManga.sort { $0.title ?? "" < $1.title ?? "" }
-                manga.sort { $0.title ?? "" < $1.title ?? "" }
-            }
-
-        case .unreadChapters:
-            if sortAscending {
-                pinnedManga.sort {
-                    if $0.unread == 0 {
-                        false
-                    } else if $1.unread == 0 {
-                        true
-                    } else {
-                        $0.unread < $1.unread
-                    }
+            case .alphabetical:
+                if sortAscending {
+                    pinnedManga.sort { $0.title ?? "" > $1.title ?? "" }
+                    manga.sort { $0.title ?? "" > $1.title ?? "" }
+                } else {
+                    pinnedManga.sort { $0.title ?? "" < $1.title ?? "" }
+                    manga.sort { $0.title ?? "" < $1.title ?? "" }
                 }
-                manga.sort {
-                    if $0.unread == 0 {
-                        false
-                    } else if $1.unread == 0 {
-                        true
-                    } else {
-                        $0.unread < $1.unread
-                    }
-                }
-            } else {
-                pinnedManga.sort { $0.unread > $1.unread }
-                manga.sort { $0.unread > $1.unread }
-            }
 
-        default:
-            await loadLibrary()
+            case .unreadChapters:
+                if sortAscending {
+                    pinnedManga.sort {
+                        if $0.unread == 0 {
+                            false
+                        } else if $1.unread == 0 {
+                            true
+                        } else {
+                            $0.unread < $1.unread
+                        }
+                    }
+                    manga.sort {
+                        if $0.unread == 0 {
+                            false
+                        } else if $1.unread == 0 {
+                            true
+                        } else {
+                            $0.unread < $1.unread
+                        }
+                    }
+                } else {
+                    pinnedManga.sort { $0.unread > $1.unread }
+                    manga.sort { $0.unread > $1.unread }
+                }
+
+            default:
+                await loadLibrary()
         }
     }
 
-    func toggleSort(method: SortMethod) async {
-        if sortMethod == method {
-            sortAscending.toggle()
-        } else {
+    func setSort(method: SortMethod, ascending: Bool) async {
+        guard sortMethod != method || sortAscending != ascending else {
+            return
+        }
+        if sortAscending != ascending {
+            sortAscending = ascending
+            UserDefaults.standard.set(sortAscending, forKey: "Library.sortAscending")
+        }
+        if sortMethod != method {
             sortMethod = method
-            sortAscending = false
             UserDefaults.standard.set(sortMethod.rawValue, forKey: "Library.sortOption")
         }
-
-        UserDefaults.standard.set(sortAscending, forKey: "Library.sortAscending")
-
         await sortLibrary()
     }
 
-    func toggleFilter(method: FilterMethod) async {
-        let filterIndex = filters.firstIndex(where: { $0.type == method })
-        if let filterIndex = filterIndex {
+    func toggleFilter(method: FilterMethod, value: String? = nil) async {
+        let filterIndex = filters.firstIndex(where: { $0.type == method && $0.value == value })
+        if let filterIndex {
             if filters[filterIndex].exclude {
                 filters.remove(at: filterIndex)
             } else {
                 filters[filterIndex].exclude = true
             }
         } else {
-            filters.append(LibraryFilter(type: method, exclude: false))
+            filters.append(LibraryFilter(type: method, value: value, exclude: false))
         }
         await loadLibrary()
+    }
+
+    private func saveFilters() {
+        let filtersData = try? JSONEncoder().encode(filters)
+        if let filtersData {
+            UserDefaults.standard.set(filtersData, forKey: "Library.filters")
+        }
     }
 
     func search(query: String) async {
@@ -437,13 +691,13 @@ class LibraryViewModel {
     }
 
     func mangaOpened(sourceId: String, mangaId: String) async {
-        guard sortMethod == .lastOpened || pinType == .updated else { return }
+        guard sortMethod == .lastOpened || pinType.needsUpdateOnContentOpen else { return }
 
         let pinnedIndex = pinnedManga.firstIndex(where: { $0.mangaId == mangaId && $0.sourceId == sourceId })
-        if let pinnedIndex = pinnedIndex {
+        if let pinnedIndex {
             if sortMethod == .lastOpened {
                 let manga = pinnedManga.remove(at: pinnedIndex)
-                if pinType == .updated {
+                if pinType.needsUpdateOnContentOpen {
                     self.manga.insert(manga, at: 0)
                 } else {
                     pinnedManga.insert(manga, at: 0)
@@ -501,21 +755,5 @@ class LibraryViewModel {
             mangaId: manga.mangaId,
             categories: [currentCategory]
         )
-    }
-
-    func shouldUpdateLibrary() -> Bool {
-        let lastUpdated = UserDefaults.standard.double(forKey: "Library.lastUpdated")
-        let interval: Double = [
-            "never": Double(-1),
-            "12hours": 43200,
-            "daily": 86400,
-            "2days": 172800,
-            "weekly": 604800
-        ][UserDefaults.standard.string(forKey: "Library.updateInterval")] ?? Double(0)
-        guard interval > 0 else { return false }
-        if Date().timeIntervalSince1970 - lastUpdated > interval {
-            return true
-        }
-        return false
     }
 }

@@ -102,8 +102,6 @@
 "RENAME_CATEGORY" = "Riemërto Kategorinë";
 "RENAME_CATEGORY_FAIL_INFO" = "Emrat e kategorive duhet të jenë unikë.";
 "CATEGORY_NAME" = "Emri i Kategorisë";
-"SYNC_WITH_TRACKER" = "Sinkronizo me Gjurmuesin";
-"SYNC_WITH_TRACKER_INFO" = "Duket se kapitulli i fundit i vendosur në gjurmues (%g) është më i lartë se kapitulli juaj i fundit i lexuar. Dëshironi të përditësoni historinë tuaj lokale për t'u përputhur?";
 "MIGRATE_SOURCES" = "Migro Burimet";
 "START_MATCHING" = "Fillo Përputhjen";
 "SYNC_LOCAL_HISTORY" = "Sinkronizo Historinë Lokale";
@@ -118,20 +116,16 @@
 "MIGRATE_%i_ITEMS?" = "Migro %i artikuj?";
 "MIGRATE_ONE_ITEM?" = "Migro një artikull?";
 "UPLOAD_DATE" = "Data e Ngarkimit";
-"TRACKING" = "Gjurmimi";
+"IS_TRACKING" = "Gjurmimi";
 "ALL_CHAPTERS_READ" = "Të gjithë kapitujt e lexuar";
 "DEFAULT_READING_MODE" = "Mënyra Standarde e Leximit";
 "PILLARBOX" = "Pillarbox";
 "PILLARBOX_AMOUNT" = "Sasia e Pillarbox";
-"ANILIST_LOGIN_NEEDED_TEXT" = "Nevojitet hyrja në AniList për të vazhduar.";
-"MAL_LOGIN_NEEDED" = "Nevojitet Hyrja në MyAnimeList";
-"MAL_LOGIN_NEEDED_TEXT" = "Nevojitet hyrja në MyAnimeList për të vazhduar.";
 "BACKUP_ERROR_TEXT" = "Një gabim u has gjatë rikthimit: %@. Kopja rezervë mund të jetë e pavlefshme.";
 "REMOVE_DOWNLOADS_CONFIRM" = "Hiqi të gjitha shkarkimet e zgjedhura?";
 "NO_WIFI_ALERT_TITLE" = "Pa Wi-Fi";
 "NO_WIFI_ALERT_MESSAGE" = "Duhet të jeni të lidhur me Wi-Fi për të shkarkuar këtë përmbajtje. Ju lutemi lidhuni me Wi-Fi dhe provoni përsëri.";
 "ADD_TO_LIBRARY" = "Shto në Bibliotekë";
-"BROWSE_NO_SOURCES_TEXT" = "Konfiguroni listën tuaj të burimeve ose hapni\nnjë burim në Aidoku për të filluar";
 "NEXT_COLON" = "E Radhës:";
 "FINISHED_COLON" = "Përfunduar:";
 "CURRENT_COLON" = "Aktual:";
@@ -140,8 +134,7 @@
 "PAGE_X" = "Faqja %i";
 "APPEARANCE" = "Pamja";
 "INCOGNITO_MODE" = "Mënyra Inkognito";
-"PIN_MANGA_UNREAD" = "Pa Lexuar";
-"SHOW_NSFW_SOURCES" = "Trego Burimet NSFW";
+"PIN_UNREAD" = "Pa Lexuar";
 "RESTORE_BACKUP_TEXT" = "Të gjitha të dhënat aktuale do të hiqen dhe do të zëvendësohen me të dhënat nga kjo kopje rezervë.";
 "BACKUP_IMPORT_SUCCESS" = "Kopja Rezervë u Importua";
 "RESTORE" = "Rikthe";
@@ -159,7 +152,6 @@
 "MIGRATION" = "Migrimi";
 "PILLARBOX_ORIENTATION" = "Orientimi i Pillarbox";
 "BOTH" = "Të dyja";
-"ANILIST_LOGIN_NEEDED" = "Nevojitet Hyrja në AniList";
 "PILLARBOX_ORIENTATION_INFO" = "Orientimi përcakton për cilat orientime duhet të aktivizohet pillarboxing.";
 "BACKUP_ERROR" = "Gabim në Kopjen Rezervë";
 "ADD_TO_CATEGORIES" = "Shto në Kategoriat";
@@ -167,7 +159,6 @@
 "LIBRARY" = "Bibliotekë";
 "LIBRARY_SEARCH" = "Kërko në Bibliotekë";
 "LIBRARY_EMPTY" = "Biblioteka është bosh";
-"LIBRARY_ADD_FROM_BROWSE" = "Shto manga nga skeda e shfletimit";
 "REMOVE_FROM_LIBRARY" = "Hiqe nga Biblioteka";
 "MANGA_INFO" = "Informacion për Mangën";
 "SORT_BY" = "Rendit sipas";
@@ -184,7 +175,6 @@
 "EDIT_CATEGORIES" = "Redakto Kategoritë";
 "CATEGORY_ADD" = "Shto Kategori";
 "CATEGORY_ADD_TEXT" = "Vendosni titullin e kategorisë së re për të krijuar.";
-"CATEGORY_TITLE" = "Titulli i Kategorisë";
 "DEFAULT_CATEGORY" = "Kategoria Standarde";
 "ALWAYS_ASK" = "Gjithmonë Pyesni";
 "BROWSE" = "Shfleto";
@@ -286,9 +276,6 @@
 "READER" = "Lexuesi";
 "OPEN_READER_VIEW" = "Hap Pamjen e Lexuesit";
 "UNREAD_CHAPTER_BADGES" = "Distinktivët e Kapitujve të Palexuar";
-"PIN_MANGA" = "Ngjit Mangën";
-"PIN_MANGA_TYPE" = "Lloji i Ngjitjes";
-"PIN_MANGA_UPDATED" = "Përditësuar";
 "LIBRARY_UPDATING" = "Përditësimi i Bibliotekës";
 "UPDATE_INTERVAL" = "Intervali i Përditësimit";
 "SKIP_TITLES" = "Anashkalo Titujt";

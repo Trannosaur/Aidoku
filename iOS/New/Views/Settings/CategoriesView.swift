@@ -11,9 +11,6 @@ struct CategoriesView: View {
     @State private var categories: [String]
 
     @State private var categoryTitle: String = ""
-    @State private var targetRenameCategory: String?
-    @State private var showAddAlert = false
-    @State private var showRenameAlert = false
     @State private var showRenameFailedAlert = false
 
     init() {
@@ -31,8 +28,7 @@ struct CategoriesView: View {
                             Label(NSLocalizedString("DELETE"), systemImage: "trash")
                         }
                         Button {
-                            targetRenameCategory = category
-                            showRenameAlert = true
+                            showRenamePrompt(targetRenameCategory: category)
                         } label: {
                             Label(NSLocalizedString("RENAME"), systemImage: "pencil")
                         }
@@ -48,41 +44,11 @@ struct CategoriesView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showAddAlert = true
+                    showAddPrompt()
                 } label: {
                     Image(systemName: "plus")
                 }
             }
-        }
-        .alert(NSLocalizedString("CATEGORY_ADD"), isPresented: $showAddAlert) {
-            TextField(NSLocalizedString("CATEGORY_TITLE"), text: $categoryTitle)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-            Button(NSLocalizedString("CANCEL"), role: .cancel) {
-                categoryTitle = ""
-            }
-            Button(NSLocalizedString("OK")) {
-                addCategory(title: categoryTitle)
-                categoryTitle = ""
-            }
-        } message: {
-            Text(NSLocalizedString("CATEGORY_ADD_TEXT"))
-        }
-        .alert(NSLocalizedString("RENAME_CATEGORY"), isPresented: $showRenameAlert) {
-            TextField(NSLocalizedString("CATEGORY_NAME"), text: $categoryTitle)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-            Button(NSLocalizedString("CANCEL"), role: .cancel) {
-                categoryTitle = ""
-            }
-            Button(NSLocalizedString("OK")) {
-                if let targetRenameCategory {
-                    renameCategory(title: targetRenameCategory, newTitle: categoryTitle)
-                }
-                categoryTitle = ""
-            }
-        } message: {
-            Text(NSLocalizedString("RENAME_CATEGORY_INFO"))
         }
         .alert(NSLocalizedString("RENAME_CATEGORY_FAIL"), isPresented: $showRenameFailedAlert) {
             Button(NSLocalizedString("OK"), role: .cancel) {}
@@ -107,14 +73,72 @@ struct CategoriesView: View {
     }
 
     func onMove(from source: IndexSet, to destination: Int) {
-        for offset in source {
-            let category = categories[offset]
-            let position = offset < destination ? destination - 1 : destination
-            CoreDataManager.shared.moveCategory(title: category, position: position)
+        let sourceIndices = source.sorted()
+        var adjustedDestination = destination
+
+        // if moving down, adjust destination for each item removed before it
+        // e.g. moving [0] to the end of a three item list will have destination 3,
+        //      but we need to move it to index 2
+        if let first = sourceIndices.first, first < destination {
+            adjustedDestination -= sourceIndices.count
         }
-        categories.move(fromOffsets: source, toOffset: destination)
+
+        for offset in sourceIndices.reversed() {
+            let category = categories[offset]
+            CoreDataManager.shared.moveCategory(title: category, toPosition: adjustedDestination)
+        }
+
+        categories = CoreDataManager.shared.getCategoryTitles()
         CoreDataManager.shared.save()
         NotificationCenter.default.post(name: .updateCategories, object: nil)
+    }
+
+    func showAddPrompt() {
+        var alertTextField: UITextField?
+        (UIApplication.shared.delegate as? AppDelegate)?.presentAlert(
+            title: NSLocalizedString("CATEGORY_ADD"),
+            message: NSLocalizedString("CATEGORY_ADD_TEXT"),
+            actions: [
+                UIAlertAction(title: NSLocalizedString("CANCEL"), style: .cancel),
+                UIAlertAction(title: NSLocalizedString("OK"), style: .default) { _ in
+                    guard let text = alertTextField?.text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return }
+                    addCategory(title: text)
+                }
+            ],
+            textFieldHandlers: [
+                { textField in
+                    textField.placeholder = NSLocalizedString("CATEGORY_NAME")
+                    textField.autocorrectionType = .no
+                    textField.returnKeyType = .done
+                    alertTextField = textField
+                }
+            ],
+            textFieldDisablesLastActionWhenEmpty: true
+        )
+    }
+
+    func showRenamePrompt(targetRenameCategory: String) {
+        var alertTextField: UITextField?
+        (UIApplication.shared.delegate as? AppDelegate)?.presentAlert(
+            title: NSLocalizedString("RENAME_CATEGORY"),
+            message: NSLocalizedString("RENAME_CATEGORY_INFO"),
+            actions: [
+                UIAlertAction(title: NSLocalizedString("CANCEL"), style: .cancel),
+                UIAlertAction(title: NSLocalizedString("OK"), style: .default) { _ in
+                    guard let text = alertTextField?.text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return }
+                    renameCategory(title: targetRenameCategory, newTitle: text)
+                }
+            ],
+            textFieldHandlers: [
+                { textField in
+                    textField.placeholder = NSLocalizedString("CATEGORY_NAME")
+                    textField.autocorrectionType = .no
+                    textField.returnKeyType = .done
+                    alertTextField = textField
+                }
+            ],
+            textFieldDisablesLastActionWhenEmpty: true
+        )
     }
 }
 

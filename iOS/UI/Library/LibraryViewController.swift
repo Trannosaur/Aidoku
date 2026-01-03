@@ -10,68 +10,71 @@ import LocalAuthentication
 import SwiftUI
 import AidokuRunner
 
-class LibraryViewController: MangaCollectionViewController {
+class LibraryViewController: OldMangaCollectionViewController {
     let viewModel = LibraryViewModel()
 
-    private lazy var downloadBarButton = {
+    // MARK: Bar Buttons
+    private lazy var downloadBarButton = makeBarButton(
+        systemName: "square.and.arrow.down",
+        action: #selector(openDownloadQueue),
+        titleKey: "DOWNLOAD_QUEUE",
+        sharesBackground: false
+    )
+    private lazy var lockBarButton = makeBarButton(
+        systemName: locked ? "lock" : "lock.open",
+        action: #selector(performToggleLock),
+        titleKey: "TOGGLE_LOCK"
+    )
+    private lazy var moreBarButton =  makeBarButton(
+        systemName: "ellipsis",
+        action: nil,
+        titleKey: "MORE_BARBUTTON"
+    )
+    private lazy var mangaUpdatesButton = makeBarButton(
+        systemName: "bell",
+        action: #selector(openMangaUpdates),
+        titleKey: "MANGA_UPDATES",
+        sharesBackground: false
+    )
+
+    private func makeBarButton(systemName: String? = nil, action: Selector?, titleKey: String, sharesBackground: Bool = true) -> UIBarButtonItem {
         let item = UIBarButtonItem(
-            image: UIImage(systemName: "square.and.arrow.down"),
+            image: systemName.flatMap { UIImage(systemName: $0) },
             style: .plain,
             target: self,
-            action: #selector(openDownloadQueue)
+            action: action
         )
-        item.title = NSLocalizedString("DOWNLOAD_QUEUE")
+        item.title = NSLocalizedString(titleKey)
+        if #available(iOS 26.0, *), !sharesBackground {
+            item.sharesBackground = false
+        }
         return item
-    }()
-
-    private lazy var lockBarButton = {
-        let item = UIBarButtonItem(
-            image: UIImage(systemName: locked ? "lock" : "lock.open"),
-            style: .plain,
-            target: self,
-            action: #selector(toggleLock)
-        )
-        item.title = NSLocalizedString("TOGGLE_LOCK")
-        return item
-    }()
-
-    private lazy var moreBarButton = {
-        let item = UIBarButtonItem(
-            image: UIImage(systemName: "ellipsis"),
-            style: .plain,
-            target: nil,
-            action: nil
-        )
-        item.title = NSLocalizedString("MORE_BARBUTTON")
-        return item
-    }()
-
-    private lazy var mangaUpdatesButton = {
-        let item = UIBarButtonItem(
-            image: UIImage(systemName: "bell"),
-            style: .plain,
-            target: self,
-            action: #selector(openMangaUpdates)
-        )
-        item.title = NSLocalizedString("MANGA_UPDATES")
-        return item
-    }()
+    }
 
     private lazy var refreshControl = UIRefreshControl()
-
     private lazy var emptyStackView = EmptyPageStackView()
     private lazy var lockedStackView = LockedPageStackView()
 
     private lazy var locked = viewModel.isCategoryLocked()
-
-    private lazy var opensReaderView = UserDefaults.standard.bool(forKey: "Library.opensReaderView")
-
     private var ignoreOptionChange = false
     private var lastSearch: String?
 
     private let libraryUndoManager = UndoManager()
     override var undoManager: UndoManager { libraryUndoManager }
     override var canBecomeFirstResponder: Bool { true }
+
+    override var usesListLayout: Bool {
+        get {
+            UserDefaults.standard.bool(forKey: "Library.listView")
+        }
+        set {
+            UserDefaults.standard.setValue(newValue, forKey: "Library.listView")
+        }
+    }
+
+    override init() {
+        super.init()
+    }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -89,11 +92,6 @@ class LibraryViewController: MangaCollectionViewController {
             navigationItem.hidesSearchBarWhenScrolling = true
         }
 
-        // run background library refresh if we need to
-        if viewModel.shouldUpdateLibrary() {
-            updateLibraryRefresh()
-        }
-
         becomeFirstResponder()
     }
 
@@ -101,7 +99,8 @@ class LibraryViewController: MangaCollectionViewController {
         super.viewDidLoad()
 
         // load stored download queue state on first load
-        Task.detached {
+        Task {
+            await SourceManager.shared.loadSources() // make sure sources are loaded first
             await DownloadManager.shared.loadQueueState()
         }
     }
@@ -109,28 +108,22 @@ class LibraryViewController: MangaCollectionViewController {
     override func configure() {
         super.configure()
 
-        title = NSLocalizedString("LIBRARY", comment: "")
+        title = NSLocalizedString("LIBRARY")
 
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationItem.hidesSearchBarWhenScrolling = false
+
+        collectionView.keyboardDismissMode = .onDrag
 
         // search controller
         let searchController = UISearchController(searchResultsController: nil)
         searchController.searchResultsUpdater = self
         searchController.obscuresBackgroundDuringPresentation = false
-        searchController.searchBar.placeholder = NSLocalizedString("LIBRARY_SEARCH", comment: "")
+        searchController.searchBar.placeholder = NSLocalizedString("LIBRARY_SEARCH")
         navigationItem.searchController = searchController
 
         // navbar buttons
-        moreBarButton.menu = UIMenu(children: [
-            UIAction(
-                title: NSLocalizedString("SELECT", comment: ""),
-                image: UIImage(systemName: "checkmark.circle")
-            ) { [weak self] _ in
-                guard let self = self else { return }
-                self.setEditing(true, animated: true)
-            }
-        ])
+        updateMoreMenu()
 
         // toolbar buttons (editing)
         let deleteButton = UIBarButtonItem(
@@ -140,7 +133,9 @@ class LibraryViewController: MangaCollectionViewController {
             action: #selector(removeSelectedFromLibrary)
         )
         deleteButton.image = UIImage(systemName: "trash")
-        deleteButton.tintColor = .red
+        if #unavailable(iOS 26.0) {
+            deleteButton.tintColor = .systemRed
+        }
 
         let addButton = UIBarButtonItem(
             title: nil,
@@ -160,16 +155,16 @@ class LibraryViewController: MangaCollectionViewController {
         refreshControl.addTarget(self, action: #selector(updateLibraryRefresh(refreshControl:)), for: .valueChanged)
         collectionView.refreshControl = refreshControl
 
-        collectionView.allowsMultipleSelection = true
+        collectionView.allowsMultipleSelection = !ProcessInfo.processInfo.isMacCatalystApp
         collectionView.allowsSelectionDuringEditing = true
 
         // header view
         let registration = UICollectionView.SupplementaryRegistration<MangaListSelectionHeader>(
             elementKind: UICollectionView.elementKindSectionHeader
         ) { [weak self] header, _, _ in
-            guard let self = self else { return }
+            guard let self else { return }
             header.delegate = self
-            header.options = [NSLocalizedString("ALL", comment: "")] + self.viewModel.categories
+            header.options = [NSLocalizedString("ALL")] + self.viewModel.categories
             header.selectedOption = self.viewModel.currentCategory != nil
                 ? (self.viewModel.categories.firstIndex(of: self.viewModel.currentCategory!) ?? -1) + 1
                 : 0
@@ -199,21 +194,15 @@ class LibraryViewController: MangaCollectionViewController {
 
         // empty text view
         emptyStackView.isHidden = true
-        emptyStackView.title = viewModel.currentCategory == nil
-            ? NSLocalizedString("LIBRARY_EMPTY", comment: "")
-            : NSLocalizedString("CATEGORY_EMPTY", comment: "")
-        emptyStackView.text = NSLocalizedString("LIBRARY_ADD_FROM_BROWSE", comment: "")
-        emptyStackView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(emptyStackView)
 
         // locked text view
         lockedStackView.isHidden = true
         lockedStackView.text = viewModel.currentCategory == nil
-            ? NSLocalizedString("LIBRARY_LOCKED", comment: "")
-            : NSLocalizedString("CATEGORY_LOCKED", comment: "")
-        lockedStackView.buttonText = NSLocalizedString("VIEW_LIBRARY", comment: "")
-        lockedStackView.button.addTarget(self, action: #selector(unlock), for: .touchUpInside)
-        lockedStackView.translatesAutoresizingMaskIntoConstraints = false
+            ? NSLocalizedString("LIBRARY_LOCKED")
+            : NSLocalizedString("CATEGORY_LOCKED")
+        lockedStackView.buttonText = NSLocalizedString("VIEW_LIBRARY")
+        lockedStackView.button.addTarget(self, action: #selector(performUnlock), for: .touchUpInside)
         view.addSubview(lockedStackView)
 
         // load data
@@ -228,14 +217,16 @@ class LibraryViewController: MangaCollectionViewController {
 
             // load library
             await viewModel.loadLibrary()
-            updateSortMenu()
+            updateEmptyStack()
             updateLockState()
-            updateDataSource()
         }
     }
 
     override func constrain() {
         super.constrain()
+
+        emptyStackView.translatesAutoresizingMaskIntoConstraints = false
+        lockedStackView.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
             emptyStackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -249,7 +240,7 @@ class LibraryViewController: MangaCollectionViewController {
         super.observe()
 
         let checkNavbarDownloadButton: (Notification) -> Void = { [weak self] _ in
-            guard let self = self else { return }
+            guard let self else { return }
             Task { @MainActor in
                 guard !self.isEditing else { return }
                 let shouldShowButton = await DownloadManager.shared.hasQueuedDownloads()
@@ -265,14 +256,48 @@ class LibraryViewController: MangaCollectionViewController {
                 }
             }
         }
+        addObserver(forName: .downloadsQueued, using: checkNavbarDownloadButton)
+        addObserver(forName: .downloadCancelled, using: checkNavbarDownloadButton)
+        addObserver(forName: .downloadsCancelled, using: checkNavbarDownloadButton)
 
-        addObserver(forName: "downloadsQueued", using: checkNavbarDownloadButton)
-        addObserver(forName: "downloadFinished", using: checkNavbarDownloadButton)
-        addObserver(forName: "downloadCancelled", using: checkNavbarDownloadButton)
-        addObserver(forName: "downloadsCancelled", using: checkNavbarDownloadButton)
+        let updateDownloadCounts: (Notification) -> Void = { [weak self] notification in
+            guard let self else { return }
+            if let id = notification.object as? ChapterIdentifier {
+                Task {
+                    await self.viewModel.fetchDownloadCounts(for: id.mangaIdentifier)
+                    self.updateDataSource()
+                }
+            } else if let id = notification.object as? MangaIdentifier {
+                Task {
+                    await self.viewModel.fetchDownloadCounts(for: id)
+                    self.updateDataSource()
+                }
+            }
+        }
+        addObserver(forName: .downloadFinished) { notification in
+            checkNavbarDownloadButton(notification)
+            updateDownloadCounts(.init(name: .downloadFinished, object: (notification.object as? Download)?.mangaIdentifier))
+        }
+        addObserver(forName: .downloadRemoved, using: updateDownloadCounts)
+        addObserver(forName: .downloadsRemoved, using: updateDownloadCounts)
 
-        addObserver(forName: "updateCategories") { [weak self] _ in
-            guard let self = self else { return }
+        addObserver(forName: .updateLibrary) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.viewModel.loadLibrary()
+                self.updateEmptyStack()
+                self.updateDataSource()
+            }
+        }
+        addObserver(forName: .updateLibraryLock) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                self.locked = self.viewModel.isCategoryLocked()
+                self.updateLockState()
+            }
+        }
+        addObserver(forName: .updateCategories) { [weak self] _ in
+            guard let self else { return }
             Task { @MainActor in
                 await self.viewModel.refreshCategories()
                 self.collectionView.collectionViewLayout = self.makeCollectionViewLayout()
@@ -287,37 +312,24 @@ class LibraryViewController: MangaCollectionViewController {
                 }
             }
         }
-
-        addObserver(forName: "updateMangaCategories") { [weak self] _ in
-            guard let self = self, self.viewModel.currentCategory != nil else { return }
+        addObserver(forName: .updateMangaCategories) { [weak self] _ in
+            guard let self, self.viewModel.currentCategory != nil else { return }
             Task { @MainActor in
                 await self.viewModel.loadLibrary()
                 self.updateDataSource()
             }
         }
-
-        addObserver(forName: "updateLibraryLock") { [weak self] _ in
-            guard let self = self else { return }
-            Task { @MainActor in
-                self.locked = self.viewModel.isCategoryLocked()
-                self.updateNavbarLock()
-                self.updateHeaderLockIcons()
-                self.updateLockState()
-                self.updateLockStackViewText()
-                self.updateDataSource()
+        addObserver(forName: .updateChapters) { [weak self] notification in
+            if let id = notification.object as? MangaIdentifier {
+                Task {
+                    await self?.viewModel.fetchUnreads(for: id)
+                    self?.updateDataSource()
+                }
             }
         }
 
-        addObserver(forName: "updateLibrary") { [weak self] _ in
-            guard let self = self else { return }
-            Task { @MainActor in
-                await self.viewModel.loadLibrary()
-                self.updateDataSource()
-            }
-        }
-
-        let updatePinType: (Notification) -> Void = { [weak self] _ in
-            guard let self = self else { return }
+        addObserver(forName: .pinTitles) { [weak self] _ in
+            guard let self else { return }
             self.viewModel.pinType = self.viewModel.getPinType()
             Task { @MainActor in
                 await self.viewModel.loadLibrary()
@@ -325,22 +337,27 @@ class LibraryViewController: MangaCollectionViewController {
             }
         }
 
-        addObserver(forName: "Library.pinManga", using: updatePinType)
-        addObserver(forName: "Library.pinMangaType", using: updatePinType)
-
-        addObserver(forName: "Library.opensReaderView") { [weak self] notification in
-            self?.opensReaderView = notification.object as? Bool ?? false
-        }
-
-        // refresh unread badges
+        // refresh badges
         addObserver(forName: "Library.unreadChapterBadges") { [weak self] _ in
-            self?.viewModel.badgeType = UserDefaults.standard.bool(forKey: "Library.unreadChapterBadges") ? .unread : .none
+            if UserDefaults.standard.bool(forKey: "Library.unreadChapterBadges") {
+                self?.viewModel.badgeType.insert(.unread)
+            } else {
+                self?.viewModel.badgeType.remove(.unread)
+            }
+            self?.reloadItems()
+        }
+        addObserver(forName: "Library.downloadedChapterBadges") { [weak self] _ in
+            if UserDefaults.standard.bool(forKey: "Library.downloadedChapterBadges") {
+                self?.viewModel.badgeType.insert(.downloaded)
+            } else {
+                self?.viewModel.badgeType.remove(.downloaded)
+            }
             self?.reloadItems()
         }
 
         // update history
-        addObserver(forName: "updateHistory") { [weak self] _ in
-            guard let self = self else { return }
+        addObserver(forName: .updateHistory) { [weak self] _ in
+            guard let self else { return }
             Task { @MainActor in
                 await self.viewModel.fetchUnreads()
                 if self.viewModel.pinType != .unread {
@@ -349,16 +366,16 @@ class LibraryViewController: MangaCollectionViewController {
                 self.updateDataSource()
             }
         }
-        addObserver(forName: "historyAdded") { [weak self] notification in
-            guard let self = self, let chapters = notification.object as? [Chapter] else { return }
+        addObserver(forName: .historyAdded) { [weak self] notification in
+            guard let self, let chapters = notification.object as? [Chapter] else { return }
             Task { @MainActor in
                 let manga = Array(Set(chapters.map { MangaInfo(mangaId: $0.mangaId, sourceId: $0.sourceId) }))
                 await self.viewModel.updateHistory(for: manga, read: true)
                 self.updateDataSource()
             }
         }
-        addObserver(forName: "historyRemoved") { [weak self] notification in
-            guard let self = self else { return }
+        addObserver(forName: .historyRemoved) { [weak self] notification in
+            guard let self else { return }
             Task { @MainActor in
                 var manga: [MangaInfo] = []
                 if let chapters = notification.object as? [Chapter] {
@@ -370,8 +387,8 @@ class LibraryViewController: MangaCollectionViewController {
                 self.updateDataSource()
             }
         }
-        addObserver(forName: "historySet") { [weak self] notification in
-            guard let self = self, let item = notification.object as? (chapter: Chapter, page: Int) else { return }
+        addObserver(forName: .historySet) { [weak self] notification in
+            guard let self, let item = notification.object as? (chapter: Chapter, page: Int) else { return }
             Task { @MainActor in
                 self.viewModel.mangaRead(sourceId: item.chapter.sourceId, mangaId: item.chapter.mangaId)
                 self.updateDataSource()
@@ -379,11 +396,12 @@ class LibraryViewController: MangaCollectionViewController {
         }
 
         // lock library when moving to background
-        addObserver(forName: UIApplication.willResignActiveNotification.rawValue) { [weak self] _ in
-            guard let self = self else { return }
-            self.locked = self.viewModel.isCategoryLocked()
-            self.updateLockState()
-            self.updateDataSource()
+        addObserver(forName: UIApplication.willResignActiveNotification) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                self.locked = self.viewModel.isCategoryLocked()
+                self.updateLockState()
+            }
         }
     }
 
@@ -410,59 +428,57 @@ class LibraryViewController: MangaCollectionViewController {
         return layout
     }
 
-    // cells with unread badges
-    override func makeCellRegistration() -> CellRegistration {
-        CellRegistration { [weak self] cell, _, info in
-            cell.sourceId = info.sourceId
-            cell.mangaId = info.mangaId
-            cell.title = info.title
-            if self?.viewModel.badgeType == .unread {
-                cell.badgeNumber = info.unread
-            } else {
-                cell.badgeNumber = 0
-            }
-            cell.setEditing(self?.isEditing ?? false, animated: false)
-            if cell.isSelected {
-                cell.select(animated: false)
-            } else {
-                cell.deselect(animated: false)
-            }
-            Task {
-                await cell.loadImage(url: info.coverUrl)
-            }
-        }
+    // cells with badges
+    override func configure(cell: MangaGridCell, info: MangaInfo) {
+        super.configure(cell: cell, info: info)
+
+        cell.badgeNumber = viewModel.badgeType.contains(.unread) ? info.unread : 0
+        cell.badgeNumber2 = viewModel.badgeType.contains(.downloaded) ? info.downloads : 0
+
+        cell.setEditing(self.isEditing, animated: false)
+    }
+
+    override func configure(cell: MangaListCell, info: MangaInfo) {
+        super.configure(cell: cell, info: info)
+
+        cell.badgeNumber = viewModel.badgeType.contains(.unread) ? info.unread : 0
+        cell.badgeNumber2 = viewModel.badgeType.contains(.downloaded) ? info.downloads : 0
+
+        cell.setEditing(isEditing, animated: false)
     }
 
     override func setEditing(_ editing: Bool, animated: Bool) {
         super.setEditing(editing, animated: animated)
-//        collectionView.setEditing(editing, animated: animated)
         updateNavbarItems()
         updateToolbar()
-        reloadItems()
+
+        if ProcessInfo.processInfo.isMacCatalystApp {
+            collectionView.allowsMultipleSelection = editing
+        }
+
+        for cell in collectionView.visibleCells {
+            if let cell = cell as? MangaGridCell {
+                cell.setEditing(editing, animated: animated)
+            } else if let cell = cell as? MangaListCell {
+                cell.setEditing(editing, animated: animated)
+            }
+        }
     }
 }
 
 extension LibraryViewController {
-    @objc func stopEditing() {
-        setEditing(false, animated: true)
-        deselectAllItems()
-    }
-
     func updateNavbarItems() {
         if isEditing {
-            if collectionView.indexPathsForSelectedItems?.count ?? 0 == dataSource.snapshot().itemIdentifiers.count {
-                navigationItem.leftBarButtonItem = UIBarButtonItem(
-                    title: NSLocalizedString("DESELECT_ALL", comment: ""),
-                    style: .plain,
-                    target: self,
-                    action: #selector(deselectAllItems)
+            let allItemsSelected = collectionView.indexPathsForSelectedItems?.count ?? 0 == dataSource.snapshot().itemIdentifiers.count
+            navigationItem.leftBarButtonItem = if allItemsSelected {
+                makeBarButton(
+                    action: #selector(deselectAllItems),
+                    titleKey: "DESELECT_ALL"
                 )
             } else {
-                navigationItem.leftBarButtonItem = UIBarButtonItem(
-                    title: NSLocalizedString("SELECT_ALL", comment: ""),
-                    style: .plain,
-                    target: self,
-                    action: #selector(selectAllItems)
+                makeBarButton(
+                    action: #selector(selectAllItems),
+                    titleKey: "SELECT_ALL"
                 )
             }
             navigationItem.rightBarButtonItems = [UIBarButtonItem(
@@ -495,7 +511,7 @@ extension LibraryViewController {
         if isEditing {
             // show toolbar
             if navigationController?.isToolbarHidden ?? false {
-                UIView.animate(withDuration: 0.3) {
+                UIView.animate(withDuration: CATransaction.animationDuration()) {
                     self.navigationController?.isToolbarHidden = false
                     self.navigationController?.toolbar.alpha = 1
                     if #available(iOS 26.0, *) {
@@ -521,12 +537,12 @@ extension LibraryViewController {
                 }
             }
             // enable items
-            let selectedItems = collectionView.indexPathsForSelectedItems ?? []
-            toolbarItems?.first?.isEnabled = !selectedItems.isEmpty
-            toolbarItems?.last?.isEnabled = !selectedItems.isEmpty
+            let hasSelectedItems = !(collectionView.indexPathsForSelectedItems?.isEmpty ?? true)
+            toolbarItems?.first?.isEnabled = hasSelectedItems
+            toolbarItems?.last?.isEnabled = hasSelectedItems
         } else if !(self.navigationController?.isToolbarHidden ?? true) {
             // fade out toolbar
-            UIView.animate(withDuration: 0.3) {
+            UIView.animate(withDuration: CATransaction.animationDuration()) {
                 self.navigationController?.toolbar.alpha = 0
                 if #available(iOS 26.0, *) {
                     // reshow tab bar on iOS 26
@@ -536,6 +552,23 @@ extension LibraryViewController {
                 self.navigationController?.isToolbarHidden = true
             }
         }
+    }
+
+    // updates library empty message
+    // should be called when category changes and when library loads initially
+    func updateEmptyStack() {
+        emptyStackView.imageSystemName = "books.vertical.fill"
+        emptyStackView.title = viewModel.currentCategory == nil
+            ? NSLocalizedString("LIBRARY_EMPTY")
+            : NSLocalizedString("CATEGORY_EMPTY")
+        emptyStackView.text = viewModel.actuallyEmpty
+            ? NSLocalizedString("LIBRARY_ADD_CONTENT")
+            : NSLocalizedString("LIBRARY_ADJUST_FILTERS")
+    }
+
+    @objc func stopEditing() {
+        setEditing(false, animated: true)
+        deselectAllItems()
     }
 
     @objc func selectAllItems() {
@@ -561,25 +594,36 @@ extension LibraryViewController {
     }
 
     @objc func updateLibraryRefresh(refreshControl: UIRefreshControl? = nil) {
-        Task { @MainActor in
-            await MangaManager.shared.refreshLibrary(category: viewModel.currentCategory)
-            await viewModel.loadLibrary()
-            updateDataSource()
+        Task {
+            // delay hiding refresh control to avoid buggy animation
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
             refreshControl?.endRefreshing()
+        }
+
+        Task {
+            await MangaManager.shared.backgroundRefreshLibrary(category: viewModel.currentCategory)
         }
     }
 
     @objc func openDownloadQueue() {
-        present(UINavigationController(rootViewController: DownloadQueueViewController()), animated: true)
+        let viewController = UIHostingController(rootView: DownloadQueueView())
+        viewController.navigationItem.largeTitleDisplayMode = .never
+        viewController.navigationItem.title = NSLocalizedString("DOWNLOAD_QUEUE")
+        if #available(iOS 26.0, *) {
+            viewController.preferredTransition = .zoom { _ in
+                self.downloadBarButton
+            }
+        }
+        viewController.modalPresentationStyle = .pageSheet
+        present(viewController, animated: true)
     }
 
     @objc func openMangaUpdates() {
         let path = NavigationCoordinator(rootViewController: self)
-        let mangaUpdatesViewController = UIHostingController(rootView: MangaUpdatesView().environmentObject(path))
-        // configure navigation item before displaying to fix animation
-        mangaUpdatesViewController.navigationItem.largeTitleDisplayMode = .never
-        mangaUpdatesViewController.navigationItem.title = NSLocalizedString("MANGA_UPDATES", comment: "")
-        navigationController?.pushViewController(mangaUpdatesViewController, animated: true)
+        let viewController = UIHostingController(rootView: MangaUpdatesView().environmentObject(path))
+        viewController.navigationItem.largeTitleDisplayMode = .never
+        viewController.navigationItem.title = NSLocalizedString("MANGA_UPDATES")
+        navigationController?.pushViewController(viewController, animated: true)
     }
 
     @objc func removeSelectedFromLibrary() {
@@ -588,7 +632,7 @@ extension LibraryViewController {
         confirmAction(
             actions: inCategory ? [
                 UIAlertAction(
-                    title: NSLocalizedString("REMOVE_FROM_CATEGORY", comment: ""),
+                    title: NSLocalizedString("REMOVE_FROM_CATEGORY"),
                     style: .destructive
                 ) { _ in
                     Task {
@@ -599,7 +643,8 @@ extension LibraryViewController {
                     }
                 }
             ] : [],
-            continueActionName: NSLocalizedString("REMOVE_FROM_LIBRARY", comment: "")
+            continueActionName: NSLocalizedString("REMOVE_FROM_LIBRARY"),
+            sourceItem: toolbarItems?.first
         ) {
             Task {
                 let identifiers = selectedItems.compactMap { self.dataSource.itemIdentifier(for: $0) }
@@ -609,11 +654,12 @@ extension LibraryViewController {
             }
         }
     }
+
     @objc func addSelectedToCategories() {
         let manga = (collectionView.indexPathsForSelectedItems ?? []).compactMap {
             dataSource.itemIdentifier(for: $0)
         }
-        self.present(
+        present(
             UINavigationController(rootViewController: AddToCategoryViewController(
                 manga: manga,
                 disabledCategories: viewModel.currentCategory != nil ? [viewModel.currentCategory!] : []
@@ -625,7 +671,6 @@ extension LibraryViewController {
 
 // MARK: - Data Source Updating
 extension LibraryViewController {
-
     func clearDataSource() {
         let snapshot = NSDiffableDataSourceSnapshot<Section, MangaInfo>()
         dataSource.apply(snapshot)
@@ -657,46 +702,51 @@ extension LibraryViewController {
 
     func reloadItems() {
         var snapshot = dataSource.snapshot()
-        if #available(iOS 15.0, *) {
-            snapshot.reconfigureItems(snapshot.itemIdentifiers)
-        } else {
-            snapshot.reloadItems(snapshot.itemIdentifiers)
-        }
+        snapshot.reconfigureItems(snapshot.itemIdentifiers)
         dataSource.apply(snapshot)
     }
 }
 
 // MARK: - Locking
 extension LibraryViewController {
+    func lock() {
+        locked = true
+        updateLockState()
+    }
 
-    @objc func unlock() {
-        let context = LAContext()
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) {
-            context.evaluatePolicy(
-                .deviceOwnerAuthenticationWithBiometrics,
-                localizedReason: NSLocalizedString("AUTH_FOR_LIBRARY", comment: "")
-            ) { [weak self] success, _ in
-                guard success, let self = self else { return }
-                Task { @MainActor in
-                    self.locked = false
-                    self.updateLockState()
-                    self.updateDataSource()
-                }
-            }
-        } else { // biometrics not supported
-            locked = false
-            updateLockState()
-            updateDataSource()
+    func unlock() {
+        locked = false
+        updateLockState()
+    }
+
+    func attemptUnlock() async {
+        do {
+            let success = try await LAContext().evaluatePolicy(
+                .defaultPolicy,
+                localizedReason: NSLocalizedString("AUTH_FOR_LIBRARY")
+            )
+            guard success else { return }
+        } catch {
+            // The error is displayed to users, so we can ignore it.
+            return
+        }
+
+        unlock()
+    }
+
+    @objc func performUnlock() {
+        Task {
+            await attemptUnlock()
         }
     }
 
-    @objc func toggleLock() {
-        if locked {
-            unlock()
-        } else {
-            locked = true
-            updateLockState()
-            updateDataSource()
+    @objc func performToggleLock() {
+        Task {
+            if locked {
+                await attemptUnlock()
+            } else {
+                lock()
+            }
         }
     }
 
@@ -707,27 +757,35 @@ extension LibraryViewController {
             emptyStackView.alpha = 0
             lockedStackView.alpha = 0
             lockedStackView.isHidden = false
-            UIView.animate(withDuration: 0.3) {
+            UIView.animate(withDuration: CATransaction.animationDuration()) {
                 self.lockedStackView.alpha = 1
             }
         } else {
             collectionView.isScrollEnabled = emptyStackView.isHidden
             lockedStackView.isHidden = true
-            UIView.animate(withDuration: 0.3) {
+            UIView.animate(withDuration: CATransaction.animationDuration()) {
                 self.emptyStackView.alpha = 1
             }
         }
         lockBarButton.image = UIImage(systemName: locked ? "lock" : "lock.open")
+
+        lockedStackView.text = viewModel.currentCategory == nil
+            ? NSLocalizedString("LIBRARY_LOCKED")
+            : NSLocalizedString("CATEGORY_LOCKED")
+
+        updateNavbarLock()
+        updateHeaderLockIcons()
+        updateDataSource()
     }
 
     func updateNavbarLock() {
-        guard !self.isEditing else { return }
+        guard !isEditing else { return }
         let index = navigationItem.rightBarButtonItems?.firstIndex(of: lockBarButton)
         if locked && index == nil {
             if navigationItem.rightBarButtonItems?.count ?? 0 == 0 {
                 navigationItem.rightBarButtonItems = [lockBarButton]
             } else {
-                navigationItem.rightBarButtonItems?.append(lockBarButton)
+                navigationItem.rightBarButtonItems?.insert(lockBarButton, at: 1)
             }
         } else if !locked, let index = index {
             navigationItem.rightBarButtonItems?.remove(at: index)
@@ -757,7 +815,7 @@ extension LibraryViewController {
             forElementKind: UICollectionView.elementKindSectionHeader, at: IndexPath(index: 0)
         ) as? MangaListSelectionHeader) else { return }
         ignoreOptionChange = true
-        header.options = [NSLocalizedString("ALL", comment: "")] + viewModel.categories
+        header.options = [NSLocalizedString("ALL")] + viewModel.categories
         header.setSelectedOption(
             viewModel.currentCategory != nil
                 ? (viewModel.categories.firstIndex(of: viewModel.currentCategory!) ?? -1) + 1
@@ -766,107 +824,289 @@ extension LibraryViewController {
     }
 }
 
-// MARK: - Sorting
+// MARK: - Sorting and Filtering
 extension LibraryViewController {
-
-    func toggleSort(method: LibraryViewModel.SortMethod) {
+    func setSort(method: LibraryViewModel.SortMethod, ascending: Bool) {
         Task {
-            await viewModel.toggleSort(method: method)
+            await viewModel.setSort(method: method, ascending: ascending)
             updateDataSource()
-            updateSortMenu()
+            updateMoreMenu()
         }
     }
 
-    func toggleFilter(method: LibraryViewModel.FilterMethod) {
+    func toggleFilter(method: LibraryViewModel.FilterMethod, value: String? = nil) {
         Task {
-            await viewModel.toggleFilter(method: method)
+            await viewModel.toggleFilter(method: method, value: value)
             updateDataSource()
-            updateSortMenu()
-        }
-    }
-
-    func updateSortMenu() {
-        let chevronIcon = UIImage(systemName: viewModel.sortAscending ? "chevron.up" : "chevron.down")
-        let sortMenu = UIMenu(title: NSLocalizedString("SORT_BY", comment: ""), options: .displayInline, children: [
-            UIAction(
-                title: NSLocalizedString("TITLE", comment: ""),
-                image: viewModel.sortMethod == .alphabetical ? chevronIcon : nil
-            ) { _ in
-                self.toggleSort(method: .alphabetical)
-            },
-            UIAction(
-                title: NSLocalizedString("LAST_READ", comment: ""),
-                image: viewModel.sortMethod == .lastRead ? chevronIcon : nil
-            ) { _ in
-                self.toggleSort(method: .lastRead)
-            },
-            UIAction(
-                title: NSLocalizedString("LAST_OPENED", comment: ""),
-                image: viewModel.sortMethod == .lastOpened ? chevronIcon : nil
-            ) { _ in
-                self.toggleSort(method: .lastOpened)
-            },
-            UIAction(
-                title: NSLocalizedString("LAST_UPDATED", comment: ""),
-                image: viewModel.sortMethod == .lastUpdated ? chevronIcon : nil
-            ) { _ in
-                self.toggleSort(method: .lastUpdated)
-            },
-            UIAction(
-                title: NSLocalizedString("DATE_ADDED", comment: ""),
-                image: viewModel.sortMethod == .dateAdded ? chevronIcon : nil
-            ) { _ in
-                self.toggleSort(method: .dateAdded)
-            },
-            UIAction(
-                title: NSLocalizedString("UNREAD_CHAPTERS", comment: ""),
-                image: viewModel.sortMethod == .unreadChapters ? chevronIcon : nil
-            ) { _ in
-                self.toggleSort(method: .unreadChapters)
-            },
-            UIAction(
-                title: NSLocalizedString("TOTAL_CHAPTERS", comment: ""),
-                image: viewModel.sortMethod == .totalChapters ? chevronIcon : nil
-            ) { _ in
-                self.toggleSort(method: .totalChapters)
-            }
-        ])
-        func filterImage(for method: LibraryViewModel.FilterMethod) -> UIImage? {
-            if let filter = viewModel.filters.first(where: { $0.type == method }) {
-                return UIImage(systemName: filter.exclude ? "xmark" : "checkmark")
+            if #available(iOS 26.0, *) {
+                updateFilterMenuState()
             } else {
-                return nil
+                updateMoreMenu()
             }
         }
-        let trackingFilter: [UIAction]
-        if TrackerManager.shared.hasAvailableTrackers {
-            trackingFilter = [UIAction(
-                title: NSLocalizedString("TRACKING", comment: ""),
-                image: filterImage(for: .tracking)
-            ) { _ in
-                self.toggleFilter(method: .tracking)
-            }]
+    }
+
+    func filterState(for method: LibraryViewModel.FilterMethod, value: String? = nil) -> UIMenuElement.State {
+        if let filter = viewModel.filters.first(where: { $0.type == method && $0.value == value }) {
+            filter.exclude ? .mixed : .on
         } else {
-            trackingFilter = []
+            .off
         }
-        let filterMenu = UIMenu(title: NSLocalizedString("FILTER_BY", comment: ""), options: .displayInline, children: [
-            UIAction(
-                title: NSLocalizedString("DOWNLOADED", comment: ""),
-                image: filterImage(for: .downloaded)
-            ) { _ in
-                self.toggleFilter(method: .downloaded)
+    }
+
+    func removeFilterAction() -> UIAction {
+        UIAction(
+            title: NSLocalizedString("REMOVE_FILTER"),
+            image: UIImage(systemName: "minus.circle")
+        ) { [weak self] _ in
+            Task {
+                self?.viewModel.filters = []
+                await self?.viewModel.loadLibrary()
+                self?.updateDataSource()
+                self?.updateMoreMenu()
             }
-        ] + trackingFilter)
+        }
+    }
+
+    func filtersSubtitle() -> String? {
+        guard !viewModel.filters.isEmpty else { return nil }
+        var options: [String] = []
+        var methods: Set<LibraryViewModel.FilterMethod> = []
+        for filterMethod in LibraryViewModel.FilterMethod.allCases {
+            // ensure we only list each method type once (e.g. for multiple source filters)
+            guard methods.insert(filterMethod).inserted else {
+                continue
+            }
+            if let filter = viewModel.filters.first(where: { $0.type == filterMethod }) {
+                guard options.count < 3 else {
+                    options.removeLast() // make subtitle fit in two lines
+                    options.append(NSLocalizedString("AND_MORE"))
+                    break
+                }
+                if filter.exclude {
+                    options.append(String(format: NSLocalizedString("NOT_%@"), filterMethod.title))
+                } else {
+                    options.append(filterMethod.title)
+                }
+            }
+        }
+        return options.joined(separator: NSLocalizedString("FILTER_SEPARATOR"))
+    }
+
+    @available(iOS 26.0, *)
+    func updateFilterMenuState() {
+        // _contextMenuInteraction only exists on ios 26+
+        // a similar thing could probably be achieved on lower versions by putting a UIButton in the bar button custom view
+        let contextMenuInteraction = moreBarButton.value(forKey: "_contextMenuInteraction") as? UIContextMenuInteraction
+        guard let contextMenuInteraction else { return }
+
+        func updateFilterSubmenu(_ menu: UIMenu) -> UIMenu {
+            menu.subtitle = self.filtersSubtitle()
+            return menu.replacingChildren(menu.children.map { element in
+                guard let action = element as? UIAction else { return element }
+                if let method = LibraryViewModel.FilterMethod.allCases.first(where: { $0.title == action.title }) {
+                    action.state = filterState(for: method)
+                }
+                return action
+            })
+        }
+
+        contextMenuInteraction.updateVisibleMenu { menu in
+            if menu.title == NSLocalizedString("BUTTON_FILTER") {
+                updateFilterSubmenu(menu)
+            } else if menu.title == LibraryViewModel.FilterMethod.source.title {
+                menu.replacingChildren(self.viewModel.sourceKeys.map { key in
+                    UIAction(
+                        title: SourceManager.shared.source(for: key)?.name ?? key,
+                        attributes: .keepsMenuPresented,
+                        state: self.filterState(for: .source, value: key)
+                    ) { [weak self] _ in
+                        self?.toggleFilter(method: .source, value: key)
+                    }
+                })
+            } else if menu.title == LibraryViewModel.FilterMethod.contentRating.title {
+                menu.replacingChildren(MangaContentRating.allCases.map { rating in
+                    UIAction(
+                        title: rating.title,
+                        attributes: .keepsMenuPresented,
+                        state: self.filterState(for: .contentRating, value: rating.stringValue)
+                    ) { [weak self] _ in
+                        self?.toggleFilter(method: .contentRating, value: rating.stringValue)
+                    }
+                })
+            } else {
+                menu.replacingChildren(menu.children.map { element in
+                    guard let menu = element as? UIMenu else { return element }
+                    if menu.children.first?.title == NSLocalizedString("SORT_BY") {
+                        let shouldShowRemoveFilter = !self.viewModel.filters.isEmpty
+                        let isShowingRemoveFilter = menu.children.last?.title == NSLocalizedString("REMOVE_FILTER")
+
+                        let updatedChildren = menu.children.map { element in
+                            if element.title == NSLocalizedString("BUTTON_FILTER"), let menu = element as? UIMenu {
+                                updateFilterSubmenu(menu) as UIMenuElement
+                            } else {
+                                element
+                            }
+                        }
+
+                        if shouldShowRemoveFilter && !isShowingRemoveFilter {
+                            return menu.replacingChildren(updatedChildren + [removeFilterAction()])
+                        } else if !shouldShowRemoveFilter && isShowingRemoveFilter {
+                            return menu.replacingChildren(updatedChildren.dropLast())
+                        }
+                    }
+                    return element
+                })
+            }
+        }
+
+        if !viewModel.filters.isEmpty {
+            moreBarButton.isSelected = true
+            moreBarButton.image = UIImage(systemName: "line.3.horizontal.decrease")?
+                .withTintColor(.white, renderingMode: .alwaysOriginal)
+        } else {
+            moreBarButton.isSelected = false
+            moreBarButton.image = UIImage(systemName: "ellipsis")
+        }
+    }
+
+    func updateMoreMenu() {
         let selectAction = UIAction(
-            title: NSLocalizedString("SELECT", comment: ""),
+            title: NSLocalizedString("SELECT"),
             image: UIImage(systemName: "checkmark.circle")
         ) { [weak self] _ in
-            guard let self = self else { return }
+            guard let self else { return }
             self.setEditing(true, animated: true)
         }
-        moreBarButton.menu = UIMenu(children: [
-            selectAction, sortMenu, filterMenu
-        ])
+
+        let layoutActions = [
+            UIAction(
+                title: NSLocalizedString("LAYOUT_GRID"),
+                image: UIImage(systemName: "square.grid.2x2"),
+                state: usesListLayout ? .off : .on
+            ) { [weak self] _ in
+                guard let self, self.usesListLayout else { return }
+                self.usesListLayout = false
+                self.collectionView.setCollectionViewLayout(self.makeCollectionViewLayout(), animated: true)
+                self.collectionView.reloadData()
+                self.updateMoreMenu()
+            },
+            UIAction(
+                title: NSLocalizedString("LAYOUT_LIST"),
+                image: UIImage(systemName: "list.bullet"),
+                state: usesListLayout ? .on : .off
+            ) { [weak self] _ in
+                guard let self, !self.usesListLayout else { return }
+                self.usesListLayout = true
+                self.collectionView.setCollectionViewLayout(self.makeCollectionViewLayout(), animated: true)
+                self.collectionView.reloadData()
+                self.updateMoreMenu()
+            }
+        ]
+
+        let sortMenu = UIMenu(
+            title: NSLocalizedString("SORT_BY"),
+            subtitle: viewModel.sortMethod.title,
+            image: UIImage(systemName: "arrow.up.arrow.down"),
+            children: [
+                UIMenu(options: .displayInline, children: LibraryViewModel.SortMethod.allCases.map { method in
+                    UIAction(
+                        title: method.title,
+                        state: viewModel.sortMethod == method ? .on : .off
+                    ) { [weak self] _ in
+                        self?.setSort(method: method, ascending: false)
+                    }
+                }),
+                UIMenu(options: .displayInline, children: [false, true].map { ascending in
+                    UIAction(
+                        title: ascending ? viewModel.sortMethod.ascendingTitle : viewModel.sortMethod.descendingTitle,
+                        state: viewModel.sortAscending == ascending ? .on : .off
+                    ) { [weak self] _ in
+                        guard let self else { return }
+                        self.setSort(method: self.viewModel.sortMethod, ascending: ascending)
+                    }
+                })
+            ]
+        )
+
+        let filterMenu = UIDeferredMenuElement.uncached { [weak self] completion in
+            guard let self else {
+                completion([])
+                return
+            }
+            let attributes: UIMenuElement.Attributes = if #available(iOS 16.0, *) {
+                .keepsMenuPresented
+            } else {
+                []
+            }
+            let filters = UIMenu(
+                title: NSLocalizedString("BUTTON_FILTER"),
+                subtitle: self.filtersSubtitle(),
+                image: UIImage(systemName: "line.3.horizontal.decrease"),
+                children: LibraryViewModel.FilterMethod.allCases.compactMap { method in
+                    guard method.isAvailable else { return nil }
+                    return UIAction(
+                        title: method.title,
+                        image: method.image,
+                        attributes: attributes,
+                        state: self.filterState(for: method)
+                    ) { [weak self] _ in
+                        self?.toggleFilter(method: method)
+                    }
+                } + [
+                    UIMenu(
+                        title: LibraryViewModel.FilterMethod.contentRating.title,
+                        image: LibraryViewModel.FilterMethod.contentRating.image,
+                        children: MangaContentRating.allCases.map { rating in
+                            UIAction(
+                                title: rating.title,
+                                attributes: attributes,
+                                state: self.filterState(for: .contentRating, value: rating.stringValue)
+                            ) { [weak self] _ in
+                                self?.toggleFilter(method: .contentRating, value: rating.stringValue)
+                            }
+                        }
+                    ),
+                    UIMenu(
+                        title: LibraryViewModel.FilterMethod.source.title,
+                        image: LibraryViewModel.FilterMethod.source.image,
+                        children: self.viewModel.sourceKeys.map { key in
+                            UIAction(
+                                title: SourceManager.shared.source(for: key)?.name ?? key,
+                                attributes: attributes,
+                                state: self.filterState(for: .source, value: key)
+                            ) { [weak self] _ in
+                                self?.toggleFilter(method: .source, value: key)
+                            }
+                        }
+                    )
+                ]
+            )
+            if self.viewModel.filters.isEmpty {
+                completion([filters])
+            } else {
+                completion([filters, self.removeFilterAction()])
+            }
+        }
+
+        moreBarButton.menu = UIMenu(
+            children: [
+                UIMenu(options: .displayInline, children: [selectAction]),
+                UIMenu(options: .displayInline, children: layoutActions),
+                UIMenu(options: .displayInline, children: [sortMenu, filterMenu])
+            ]
+        )
+
+        if #available(iOS 26.0, *) {
+            if !viewModel.filters.isEmpty {
+                moreBarButton.isSelected = true
+                moreBarButton.image = UIImage(systemName: "line.3.horizontal.decrease")?
+                    .withTintColor(.white, renderingMode: .alwaysOriginal)
+            } else {
+                moreBarButton.isSelected = false
+                moreBarButton.image = UIImage(systemName: "ellipsis")
+            }
+        }
     }
 }
 
@@ -883,43 +1123,52 @@ extension LibraryViewController: MangaListSelectionHeaderDelegate {
             } else {
                 viewModel.currentCategory = viewModel.categories[index - 1]
             }
-            updateLockStackViewText()
             locked = viewModel.isCategoryLocked()
-            updateNavbarLock()
             updateLockState()
             deselectAllItems()
             updateToolbar()
             updateNavbarItems()
 
             await viewModel.loadLibrary()
+            updateEmptyStack()
             updateDataSource()
         }
-    }
-
-    private func updateLockStackViewText() {
-        lockedStackView.text = viewModel.currentCategory == nil
-            ? NSLocalizedString("LIBRARY_LOCKED", comment: "")
-            : NSLocalizedString("CATEGORY_LOCKED", comment: "")
     }
 }
 
 // MARK: - Collection View Delegate
 extension LibraryViewController {
+    // support two finger drag to select
+    func collectionView(_ collectionView: UICollectionView, shouldBeginMultipleSelectionInteractionAt indexPath: IndexPath) -> Bool {
+        true
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didBeginMultipleSelectionInteractionAt indexPath: IndexPath) {
+        setEditing(true, animated: true)
+    }
+
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        guard
-            let info = dataSource.itemIdentifier(for: indexPath)
-        else { return }
+        guard let info = dataSource.itemIdentifier(for: indexPath) else { return }
 
         if isEditing {
-            if let cell = collectionView.cellForItem(at: indexPath) as? MangaGridCell {
-                cell.select()
-                updateNavbarItems()
-                updateToolbar()
+            let cell = collectionView.cellForItem(at: indexPath)
+            guard let cell else { return }
+            if let cell = cell as? MangaGridCell {
+                cell.setSelected(true)
+            } else if let cell = cell as? MangaListCell {
+                cell.setSelected(true)
             }
+            if #available(iOS 17.5, *) {
+                UISelectionFeedbackGenerator().selectionChanged(at: cell.center)
+            } else {
+                UISelectionFeedbackGenerator().selectionChanged()
+            }
+            updateNavbarItems()
+            updateToolbar()
             return
         }
 
-        if opensReaderView {
+        if UserDefaults.standard.bool(forKey: "Library.opensReaderView") {
             Task {
                 // get next chapter to read
                 let history = await CoreDataManager.shared.getReadingHistory(
@@ -937,7 +1186,7 @@ extension LibraryViewController {
                     let manga = AidokuRunner.Manga(
                         sourceKey: chapter.sourceId,
                         key: chapter.mangaId,
-                        title: "",
+                        title: info.title ?? "",
                         chapters: chapters.map { $0.toNew() }
                     )
                     let readerController = ReaderViewController(
@@ -946,8 +1195,26 @@ extension LibraryViewController {
                         chapter: chapter.toNew()
                     )
                     let navigationController = ReaderNavigationController(
-                        rootViewController: readerController
+                        readerViewController: readerController,
+                        mangaInfo: info
                     )
+                    if #available(iOS 18.0, *) {
+                        navigationController.preferredTransition = .zoom { context in
+                            guard
+                                let navigationController = context.zoomedViewController as? ReaderNavigationController,
+                                let info = navigationController.mangaInfo,
+                                let indexPath = self.dataSource.indexPath(for: info),
+                                let cell = self.collectionView.cellForItem(at: indexPath)
+                            else {
+                                return nil
+                            }
+                            if let cell = cell as? MangaListCell {
+                                return cell.coverImageView
+                            } else {
+                                return cell.contentView
+                            }
+                        }
+                    }
                     navigationController.modalPresentationStyle = .fullScreen
                     present(navigationController, animated: true)
                 } else {
@@ -959,6 +1226,7 @@ extension LibraryViewController {
         } else {
             super.collectionView(collectionView, didSelectItemAt: indexPath)
         }
+
         if !UserDefaults.standard.bool(forKey: "General.incognitoMode") {
             Task {
                 await CoreDataManager.shared.setOpened(sourceId: info.sourceId, mangaId: info.mangaId)
@@ -966,28 +1234,27 @@ extension LibraryViewController {
                 self.updateDataSource()
             }
         }
+
         collectionView.deselectItem(at: indexPath, animated: true)
     }
 
     func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
         if isEditing {
-            if let cell = collectionView.cellForItem(at: indexPath) as? MangaGridCell {
-                cell.deselect()
-                updateNavbarItems()
-                updateToolbar()
+            let cell = collectionView.cellForItem(at: indexPath)
+            if let cell = cell as? MangaGridCell {
+                cell.setSelected(false)
+            } else if let cell = cell as? MangaListCell {
+                cell.setSelected(false)
             }
+            updateNavbarItems()
+            updateToolbar()
         }
     }
 
-    // hide highlighting when editing
+    // don't highlighting when selecting during editing
     override func collectionView(_ collectionView: UICollectionView, didHighlightItemAt indexPath: IndexPath) {
         guard !isEditing else { return }
         super.collectionView(collectionView, didHighlightItemAt: indexPath)
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, didUnhighlightItemAt indexPath: IndexPath) {
-        guard !isEditing else { return }
-        super.collectionView(collectionView, didUnhighlightItemAt: indexPath)
     }
 
     private func mangaInfo(at path: IndexPath) -> MangaInfo {
@@ -1013,13 +1280,13 @@ extension LibraryViewController {
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ -> UIMenu? in
             var actions: [UIMenuElement] = []
             let singleAttributes = mangaInfo.count > 1
-            ? .disabled
-            : UIMenuElement.Attributes()
+                ? .disabled
+                : UIMenuElement.Attributes()
 
             if let url = manga.url {
                 actions.append(UIMenu(identifier: .share, options: .displayInline, children: [
                     UIAction(
-                        title: NSLocalizedString("SHARE", comment: ""),
+                        title: NSLocalizedString("SHARE"),
                         image: UIImage(systemName: "square.and.arrow.up"),
                         attributes: singleAttributes
                     ) { _ in
@@ -1035,19 +1302,19 @@ extension LibraryViewController {
                 ]))
             }
 
-            if self.opensReaderView {
+            if UserDefaults.standard.bool(forKey: "Library.opensReaderView"), mangaInfo.count == 1 {
                 actions.append(UIAction(
-                    title: NSLocalizedString("MANGA_INFO", comment: ""),
+                    title: NSLocalizedString("MANGA_INFO"),
                     image: UIImage(systemName: "info.circle"),
                     attributes: singleAttributes
                 ) { _ in
-                    super.collectionView(collectionView, didSelectItemAt: indexPath) // open info view
+                    self.openInfoView(info: mangaInfo[0], zoom: false)
                 })
             }
 
             if !self.viewModel.categories.isEmpty {
                 actions.append(UIAction(
-                    title: NSLocalizedString("EDIT_CATEGORIES", comment: ""),
+                    title: NSLocalizedString("EDIT_CATEGORIES"),
                     image: UIImage(systemName: "folder.badge.gearshape"),
                     attributes: singleAttributes
                 ) { _ in
@@ -1064,87 +1331,94 @@ extension LibraryViewController {
             }
 
             actions.append(UIAction(
-                title: NSLocalizedString("MIGRATE", comment: ""),
-                image: UIImage(systemName: "arrow.left.arrow.right"),
-                attributes: singleAttributes
+                title: NSLocalizedString("MIGRATE"),
+                image: UIImage(systemName: "arrow.left.arrow.right")
             ) { [weak self] _ in
-                let manga = manga.toManga()
-                let migrateView = MigrateMangaView(manga: [manga])
+                let manga = mangaInfo.map { $0.toManga() }
+                let migrateView = MigrateMangaView(manga: manga)
                 self?.present(UIHostingController(rootView: SwiftUINavigationView(rootView: migrateView)), animated: true)
             })
 
             var bottomMenuChildren: [UIMenuElement] = []
 
-            bottomMenuChildren.append(UIMenu(title: NSLocalizedString("MARK_ALL", comment: ""), image: nil, children: [
+            bottomMenuChildren.append(UIMenu(title: NSLocalizedString("MARK_ALL"), image: nil, children: [
                 // read chapters
-                UIAction(title: NSLocalizedString("READ", comment: ""), image: UIImage(systemName: "eye")) { _ in
-                    self.showLoadingIndicator()
+                UIAction(title: NSLocalizedString("READ"), image: UIImage(systemName: "eye")) { _ in
+                    (UIApplication.shared.delegate as? AppDelegate)?.showLoadingIndicator()
 
                     Task {
                         for manga in mangaInfo {
                             let manga = manga.toManga()
                             let chapters = await CoreDataManager.shared.getChapters(sourceId: manga.sourceId, mangaId: manga.id)
 
-                            await HistoryManager.shared.addHistory(chapters: chapters)
+                            await HistoryManager.shared.addHistory(
+                                sourceId: manga.sourceId,
+                                mangaId: manga.id,
+                                chapters: chapters.map { $0.toNew() }
+                            )
                         }
 
-                        self.hideLoadingIndicator()
+                        await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
                     }
                 },
                 // unread chapters
-                UIAction(title: NSLocalizedString("UNREAD", comment: ""), image: UIImage(systemName: "eye.slash")) { _ in
-                    self.showLoadingIndicator()
+                UIAction(title: NSLocalizedString("UNREAD"), image: UIImage(systemName: "eye.slash")) { _ in
+                    (UIApplication.shared.delegate as? AppDelegate)?.showLoadingIndicator()
 
                     Task {
                         for manga in mangaInfo {
                             let manga = manga.toManga()
                             let chapters = await CoreDataManager.shared.getChapters(sourceId: manga.sourceId, mangaId: manga.id)
 
-                            await HistoryManager.shared.removeHistory(chapters: chapters)
+                            await HistoryManager.shared.removeHistory(
+                                sourceId: manga.sourceId,
+                                mangaId: manga.id,
+                                chapterIds: chapters.map { $0.id }
+                            )
                         }
 
-                        self.hideLoadingIndicator()
+                        await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
                     }
                 }
             ]))
 
-            let downloadAllAction = UIAction(title: NSLocalizedString("ALL", comment: "")) { _ in
+            let downloadAllAction = UIAction(title: NSLocalizedString("ALL")) { _ in
                 if UserDefaults.standard.bool(forKey: "Library.downloadOnlyOnWifi") &&
                     Reachability.getConnectionType() == .wifi ||
                     !UserDefaults.standard.bool(forKey: "Library.downloadOnlyOnWifi") {
                     Task {
                         for mangaInfo in mangaInfo {
-                            await DownloadManager.shared.downloadAll(manga: mangaInfo.toManga())
+                            await DownloadManager.shared.downloadAll(manga: mangaInfo.toManga().toNew())
                         }
                     }
                 } else {
                     self.presentAlert(
-                        title: NSLocalizedString("NO_WIFI_ALERT_TITLE", comment: ""),
-                        message: NSLocalizedString("NO_WIFI_ALERT_MESSAGE", comment: "")
+                        title: NSLocalizedString("NO_WIFI_ALERT_TITLE"),
+                        message: NSLocalizedString("NO_WIFI_ALERT_MESSAGE")
                     )
                 }
             }
 
-            let downloadUnreadAction = UIAction(title: NSLocalizedString("UNREAD", comment: "")) { _ in
+            let downloadUnreadAction = UIAction(title: NSLocalizedString("UNREAD")) { _ in
                 if UserDefaults.standard.bool(forKey: "Library.downloadOnlyOnWifi") &&
                     Reachability.getConnectionType() == .wifi ||
                     !UserDefaults.standard.bool(forKey: "Library.downloadOnlyOnWifi") {
                     Task {
                         for manga in mangaInfo {
-                            await DownloadManager.shared.downloadUnread(manga: manga.toManga())
+                            await DownloadManager.shared.downloadUnread(manga: manga.toManga().toNew())
                         }
                     }
                 } else {
                     self.presentAlert(
-                        title: NSLocalizedString("NO_WIFI_ALERT_TITLE", comment: ""),
-                        message: NSLocalizedString("NO_WIFI_ALERT_MESSAGE", comment: "")
+                        title: NSLocalizedString("NO_WIFI_ALERT_TITLE"),
+                        message: NSLocalizedString("NO_WIFI_ALERT_MESSAGE")
                     )
                 }
             }
 
-            if manga.sourceId != LocalSourceRunner.sourceKey {
+            if manga.sourceId != LocalSourceRunner.sourceKey && SourceManager.shared.hasSourceInstalled(id: manga.sourceId) {
                 bottomMenuChildren.append(UIMenu(
-                    title: NSLocalizedString("DOWNLOAD", comment: ""),
+                    title: NSLocalizedString("DOWNLOAD"),
                     image: UIImage(systemName: "arrow.down.circle"),
                     children: [downloadAllAction, downloadUnreadAction]
                 ))
@@ -1152,7 +1426,7 @@ extension LibraryViewController {
 
             if self.viewModel.currentCategory != nil {
                 bottomMenuChildren.append(UIAction(
-                    title: NSLocalizedString("REMOVE_FROM_CATEGORY", comment: ""),
+                    title: NSLocalizedString("REMOVE_FROM_CATEGORY"),
                     image: UIImage(systemName: "folder.badge.minus"),
                     attributes: .destructive
                 ) { _ in
@@ -1161,7 +1435,7 @@ extension LibraryViewController {
             }
 
             bottomMenuChildren.append(UIAction(
-                title: NSLocalizedString("REMOVE_FROM_LIBRARY", comment: ""),
+                title: NSLocalizedString("REMOVE_FROM_LIBRARY"),
                 image: UIImage(systemName: "trash"),
                 attributes: .destructive
             ) { _ in
@@ -1185,7 +1459,6 @@ extension LibraryViewController {
 
 // MARK: - Search Results
 extension LibraryViewController: UISearchResultsUpdating {
-
     func updateSearchResults(for searchController: UISearchController) {
         guard searchController.searchBar.text != lastSearch else { return }
         lastSearch = searchController.searchBar.text
@@ -1204,8 +1477,8 @@ extension LibraryViewController {
         let actionName =
             mangaCount > 1
             ? String(
-                format: NSLocalizedString("REMOVING_%i_ITEMS_FROM_LIBRARY", comment: ""), mangaCount
-            ) : NSLocalizedString("REMOVING_(ONE)_ITEM_FROM_LIBRARY", comment: "")
+                format: NSLocalizedString("REMOVING_%i_ITEMS_FROM_LIBRARY"), mangaCount
+            ) : NSLocalizedString("REMOVING_(ONE)_ITEM_FROM_LIBRARY")
         undoManager.setActionName(actionName)
 
         let removedManga = mangaInfo.map {
@@ -1261,10 +1534,10 @@ extension LibraryViewController {
         let actionName =
             mangaCount > 1
             ? String(
-                format: NSLocalizedString("REMOVING_%i_ITEMS_FROM_CATEGORY_%@", comment: ""),
+                format: NSLocalizedString("REMOVING_%i_ITEMS_FROM_CATEGORY_%@"),
                 mangaCount, currentCategory)
             : String(
-                format: NSLocalizedString("REMOVING_(ONE)_ITEM_FROM_CATEGORY_%@", comment: ""),
+                format: NSLocalizedString("REMOVING_(ONE)_ITEM_FROM_CATEGORY_%@"),
                 currentCategory)
         undoManager.setActionName(actionName)
 

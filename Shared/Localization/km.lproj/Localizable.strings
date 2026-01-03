@@ -1,9 +1,5 @@
 
 
-"ANILIST_LOGIN_NEEDED_TEXT" = "AniList Token របស់អ្នកបានផុតកំណត់ កម្មវិធីតាមដាន AniList របស់អ្នកនឹងមិនដំណើរការទេ រហូតដល់អ្នកចូល Login ម្តងទៀតនៅក្នុងការកំណត់។";
-"ANILIST_LOGIN_NEEDED" = "តម្រូវឱ្យ Login ចូល AniList";
-"MAL_LOGIN_NEEDED" = "តម្រូវឱ្យ Login ចូល MyAnimeList";
-"MAL_LOGIN_NEEDED_TEXT" = "MyAnimeList Token របស់អ្នកបានផុតកំណត់ កម្មវិធីតាមដាន MyAnimeList របស់អ្នកនឹងមិនដំណើរការទេ រហូតដល់អ្នកចូល Login ម្តងទៀតនៅក្នុងការកំណត់។";
 "RELOAD" = "ផ្ទុកឡើងវិញ";
 "%i_OF_%i" = "%i of %i";
 "%i_PAGES_LEFT" = "នៅសល់ %i ទំព័រ";
@@ -19,14 +15,12 @@
 "SKIP_DUPLICATE_CHAPTERS" = "រំលងវគ្គដដែលៗ";
 "RENAME_CATEGORY_FAIL_INFO" = "ឈ្មោះធ្នើសៀវភៅត្រូវតែប្លែក។";
 "CATEGORY_NAME" = "ឈ្មោះធ្នើសៀវភៅ";
-"SYNC_WITH_TRACKER" = "ធ្វើសមកាលកម្មជាមួយកម្មវិធីតាមដាន";
-"SYNC_WITH_TRACKER_INFO" = "វាបង្ហាញថាវគ្គចុងក្រោយបំផុត (%g) ដែលបានកំណត់នៅក្នុងកម្មវិធីតាមដានរបស់អ្នកគឺច្រើនជាងវគ្គចុងក្រោយដែលអ្នកបានអាន។ តើ​អ្នក​ចង់​អាប់ដេតប្រវត្តិ​អាន​របស់​អ្នក​ឱ្យ​ត្រូវ​គ្នា​ដែរ​ឬ​ទេ?";
 "MIGRATE_SOURCES" = "ផ្ទេរប្រភព";
 "MIGRATION" = "ផ្ទេរ";
 "MOST_CHAPTERS_SLOWER" = "វគ្គភាគច្រើន (យឺត)";
 "SELECTED" = "បានជ្រើសរើស";
 "MIGRATE_ONE_ITEM?" = "តើអ្នកចង់ផ្ទេរ 1 ធាតុ?";
-"TRACKING" = "ការ​តាមដាន";
+"IS_TRACKING" = "ការ​តាមដាន";
 "UPLOAD_DATE" = "កាលបរិច្ឆេទបង្ហោះ";
 "ALL_CHAPTERS_READ" = "បានអានគ្រប់វគ្គទាំងអស់";
 // General
@@ -56,7 +50,6 @@
 "CATEGORIES" = "ធ្នើសៀវភៅ";
 "CATEGORY_ADD_TEXT" = "បញ្ចូលឈ្មោះធ្នើសៀវភៅថ្មី។";
 "EDIT_CATEGORIES" = "កែសម្រួល​ធ្នើសៀវភៅ";
-"BROWSE_NO_SOURCES_TEXT" = "កំណត់បញ្ជីប្រភពរបស់អ្នក\nឬបើកប្រភពនៅក្នុង Aidoku ដើម្បីចាប់ផ្តើម";
 "EXTERNAL" = "ខាងក្រៅ";
 "UNPIN" = "ដកខ្ទាស់សំខាន់";
 "INFO" = "ព័ត៌មានបន្ថែម";
@@ -120,8 +113,6 @@
 "LANDSCAPE" = "រូបផ្តេក";
 "READER" = "អ្នកអាន";
 "UNREAD_CHAPTER_BADGES" = "បង្ហាញផ្លាកសញ្ញវគ្គមិនទាន់អាន";
-"PIN_MANGA" = "ខ្ទាស់ម៉ានហ្គាសំខាន់";
-"PIN_MANGA_UPDATED" = "បានធ្វើអាប់ដេត";
 "LIBRARY_UPDATING" = "កំពុងធ្វើការអាប់ដេតបណ្ណាល័យ";
 "UPDATE_INTERVAL" = "ចន្លោះពេលធ្វើការអាប់ដេត";
 "ONLY_UPDATE_ON_WIFI" = "អាប់ដេតនៅមាន Wi-Fi ប៉ុណ្ណោះ";
@@ -219,7 +210,6 @@
 "LIBRARY_EMPTY" = "បណ្ណាល័យទទេ";
 "ADD_TO_LIBRARY" = "បន្ថែមទៅក្នុងបណ្ណាល័យ";
 "REMOVE_DOWNLOADS_CONFIRM" = "លុបការទាញយកដែលបានជ្រើសរើសទាំងអស់ចេញ?";
-"LIBRARY_ADD_FROM_BROWSE" = "បន្ថែមម៉ានហ្គាពីផ្ទាំងរុករក";
 "NO_WIFI_ALERT_MESSAGE" = "អ្នកត្រូវភ្ជាប់ Wi-Fi ដើម្បីទាញយកឯកសារនេះ។ សូមភ្ជាប់ Wi-Fi និងព្យាយាមម្តងទៀត។";
 "FILTER_BY" = "តម្រង់ដោយ";
 "TITLE" = "ចំណងជើង";
@@ -231,7 +221,6 @@
 // Categories
 "ALL" = "ទាំងអស់";
 "CATEGORY_ADD" = "បន្ថែមធ្នើសៀវភៅម៉ានហ្គា";
-"CATEGORY_TITLE" = "ឈ្មោះធ្នើសៀវភៅ";
 "ALWAYS_ASK" = "Always Ask";
 
 // Browse
@@ -293,8 +282,7 @@
 "ABOUT" = "អំពី";
 "INCOGNITO_MODE_TEXT" = "ប្រវត្តិនៃការអានមិនត្រូវបានកត់ត្រាទេ នៅពេលបើក";
 "OPEN_READER_VIEW" = "ចូលអានម៉ានហ្គា";
-"PIN_MANGA_TYPE" = "ប្រភេទខ្ទាស់សំខាន់";
-"PIN_MANGA_UNREAD" = "មិនទាន់អាន";
+"PIN_UNREAD" = "មិនទាន់អាន";
 "SKIP_TITLES" = "រំលងចំណងជើង";
 "EXCLUDED_CATEGORIES" = "ធ្នើសៀវភៅម៉ានហ្គាដែលមិនរាប់បញ្ចូល";
 "BACKUP_IMPORT_SUCCESS_TEXT" = "ដើម្បីស្តារ Backup នេះ ស្វែងរកវានៅក្នុងទំព័រ Backups នៅក្នុងការកំណត់។";
@@ -322,7 +310,6 @@
 "WITH_UNREAD_CHAPTERS" = "ជាមួយនឹងវគ្គមិនទាន់អាន";
 "THAT_HAVENT_BEEN_READ" = "ដែលមិនទាន់បានអាន";
 "SOURCE_LIST_ADD_TEXT" = "វាយបញ្ចូល URL នៅក្នុងបញ្ជីប្រភព";
-"SHOW_NSFW_SOURCES" = "បង្ហាញប្រភព NSFW";
 "SOURCE_LISTS" = "បញ្ជីប្រភព";
 "SOURCE_LIST_ADDED" = "បញ្ជីប្រភពដែលបានបន្ថែម";
 "SOURCE_LIST_URL" = "បញ្ជីប្រភព URL";

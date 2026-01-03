@@ -40,8 +40,10 @@ class Manga: Codable, Hashable {
     var langFilter: String?
     var scanlatorFilter: [String]?
 
-    var lastUpdated: Date?
     var lastOpened: Date?
+    var lastUpdated: Date?
+    var lastUpdatedChapters: Date?
+    var lastChapter: Date?
     var lastRead: Date?
     var dateAdded: Date?
 
@@ -63,8 +65,10 @@ class Manga: Codable, Hashable {
         chapterFlags: Int = 0,
         langFilter: String? = nil,
         scanlatorFilter: [String]? = nil,
-        lastUpdated: Date? = nil,
         lastOpened: Date? = nil,
+        lastUpdated: Date? = nil,
+        lastUpdatedChapters: Date? = nil,
+        lastChapter: Date? = nil,
         lastRead: Date? = nil,
         dateAdded: Date? = nil
     ) {
@@ -85,8 +89,10 @@ class Manga: Codable, Hashable {
         self.chapterFlags = chapterFlags
         self.langFilter = langFilter
         self.scanlatorFilter = scanlatorFilter
-        self.lastUpdated = lastUpdated
         self.lastOpened = lastOpened
+        self.lastUpdated = lastUpdated
+        self.lastUpdatedChapters = lastUpdatedChapters
+        self.lastChapter = lastChapter
         self.lastRead = lastRead
         self.dateAdded = dateAdded
     }
@@ -107,8 +113,10 @@ class Manga: Codable, Hashable {
         chapterFlags = manga.chapterFlags
         langFilter = manga.langFilter ?? langFilter
         scanlatorFilter = manga.scanlatorFilter ?? scanlatorFilter
-        lastUpdated = manga.lastUpdated ?? lastUpdated
         lastOpened = manga.lastOpened ?? lastOpened
+        lastUpdated = manga.lastUpdated ?? lastUpdated
+        lastUpdatedChapters = manga.lastUpdatedChapters ?? lastUpdatedChapters
+        lastChapter = manga.lastChapter ?? lastChapter
         lastRead = manga.lastRead ?? lastRead
         dateAdded = manga.dateAdded ?? dateAdded
     }
@@ -132,8 +140,10 @@ class Manga: Codable, Hashable {
             chapterFlags: manga.chapterFlags,
             langFilter: manga.langFilter ?? langFilter,
             scanlatorFilter: manga.scanlatorFilter ?? scanlatorFilter,
-            lastUpdated: manga.lastUpdated ?? lastUpdated,
             lastOpened: manga.lastOpened ?? lastOpened,
+            lastUpdated: manga.lastUpdated ?? lastUpdated,
+            lastUpdatedChapters: manga.lastUpdatedChapters ?? lastUpdatedChapters,
+            lastChapter: manga.lastChapter ?? lastChapter,
             lastRead: manga.lastRead ?? lastRead,
             dateAdded: manga.dateAdded ?? dateAdded
         )
@@ -162,21 +172,21 @@ class Manga: Codable, Hashable {
 extension Manga: KVCObject {
     func valueByPropertyName(name: String) -> Any? {
         switch name {
-        case "id": return id
-        case "title": return title
-        case "author": return author
-        case "artist": return artist
-        case "description": return description
-        case "tags": return tags
-        case "cover": return coverUrl
-        case "url": return url
-        case "status": return status.rawValue
-        case "nsfw": return nsfw.rawValue
-        case "viewer": return viewer.rawValue
-        case "chapterFlags": return chapterFlags
-        case "langFilter": return langFilter
-        case "scanlatorFilter": return scanlatorFilter
-        default: return nil
+            case "id": return id
+            case "title": return title
+            case "author": return author
+            case "artist": return artist
+            case "description": return description
+            case "tags": return tags
+            case "cover": return coverUrl
+            case "url": return url
+            case "status": return status.rawValue
+            case "nsfw": return nsfw.rawValue
+            case "viewer": return viewer.rawValue
+            case "chapterFlags": return chapterFlags
+            case "langFilter": return langFilter
+            case "scanlatorFilter": return scanlatorFilter
+            default: return nil
         }
     }
 }
@@ -200,5 +210,9 @@ extension Manga {
             nextUpdateTime: nextUpdateTime.flatMap { Int($0.timeIntervalSince1970) },
             chapters: chapters
         )
+    }
+
+    var identifier: MangaIdentifier {
+        .init(sourceKey: sourceId, mangaKey: id)
     }
 }

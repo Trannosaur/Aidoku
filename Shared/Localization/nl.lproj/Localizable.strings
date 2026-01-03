@@ -24,7 +24,6 @@
 "LIBRARY" = "Bibliotheek";
 "LIBRARY_SEARCH" = "Vind in bibliotheek";
 "LIBRARY_EMPTY" = "Bibliotheek Leeg";
-"LIBRARY_ADD_FROM_BROWSE" = "Voeg manga toe vanuit het ontdekken tabblad";
 "ADD_TO_LIBRARY" = "Voeg toe aan bibliotheek";
 "REMOVE_FROM_LIBRARY" = "Verwijder van bibliotheek";
 "MANGA_INFO" = "Manga Informatie";
@@ -41,10 +40,8 @@
 "EDIT_CATEGORIES" = "Bewerk categorieën";
 "CATEGORY_ADD" = "Categorieën toevoegen";
 "CATEGORY_ADD_TEXT" = "Vul de titel in van de nieuwe categorie.";
-"CATEGORY_TITLE" = "Categorie titel";
 "DEFAULT_CATEGORY" = "Standaard categorie";
 "ALWAYS_ASK" = "Altijd vragen";
-"BROWSE_NO_SOURCES_TEXT" = "Configureer uw bronnenlijst of open een\nbron in Aidoku om aan de slag te gaan";
 "ADDING_SOURCES_GUIDE_BUTTON" = "Bronnengids toevoegen";
 "UPDATES" = "Updates";
 "INSTALLED" = "Geïnstalleerd";
@@ -132,9 +129,7 @@
 "PORTRAIT" = "Portret";
 "LANDSCAPE" = "Landschap";
 "UNREAD_CHAPTER_BADGES" = "Ongelezen hoofdstuk badge";
-"PIN_MANGA_TYPE" = "Pin type";
-"PIN_MANGA_UNREAD" = "Ongelezen";
-"PIN_MANGA_UPDATED" = "Bijgewerkt";
+"PIN_UNREAD" = "Ongelezen";
 "LIBRARY_UPDATING" = "Bibliotheek bijwerken";
 "UPDATE_INTERVAL" = "Update interval";
 "SKIP_TITLES" = "Sla titels over";
@@ -148,7 +143,6 @@
 "SOURCE_LISTS" = "Bron lijsten";
 "SOURCE_LIST_ADDED" = "Bron lijsten toegevoegd";
 "SOURCE_LIST_ADDED_TEXT" = "U kunt nu bladeren door externe bronnen in het Blader tabblad.";
-"SHOW_NSFW_SOURCES" = "Toon NSFW Bronnen";
 "SOURCE_LIST_URL" = "Bron lijst URL";
 "RESTORE_BACKUP" = "Herstellen naar deze back-up?";
 "BACKUP_IMPORT_SUCCESS" = "Back-up geïmporteerd";
@@ -215,8 +209,6 @@
 "RENAME_CATEGORY" = "Hernoem categorie";
 "RENAME_CATEGORY_FAIL_INFO" = "Categorie namen moeten uniek zijn.";
 "CATEGORY_NAME" = "Categorie naam";
-"SYNC_WITH_TRACKER" = "Synchroniseer met Tracker";
-"SYNC_WITH_TRACKER_INFO" = "Het lijkt erop dat het laatste hoofdstuk dat in de tracker (%g) is ingesteld hoger is dan het laatst gelezen hoofdstuk. Wilt u uw lokale geschiedenis hierop aanpassen?";
 "MIGRATE_SOURCES" = "Migreer Bronnen";
 "START_MATCHING" = "Begin met matchen";
 "SYNC_LOCAL_HISTORY" = "Synchroniseer lokale geschiedenis";
@@ -232,15 +224,11 @@
 "FIRST_ALTERNATIVE" = "Eerste alternatief";
 "MIGRATE_ONE_ITEM?" = "Migreer 1 deel?";
 "UPLOAD_DATE" = "Upload datum";
-"TRACKING" = "Tracking";
+"IS_TRACKING" = "Tracking";
 "ALL_CHAPTERS_READ" = "Alle hoofdstukken gelezen";
 "MIGRATE_%i_ITEMS?" = "%i items migreren?";
 "DEFAULT_READING_MODE" = "Standaard leesmodus";
 "BOTH" = "Beide";
-"ANILIST_LOGIN_NEEDED" = "AniList Login nodig";
-"ANILIST_LOGIN_NEEDED_TEXT" = "Uw AniList-token is verlopen, dus de AniList-tracker werkt niet meer totdat u opnieuw inlogt in de instellingen.";
-"MAL_LOGIN_NEEDED" = "MyAnimeList Login nodig";
-"MAL_LOGIN_NEEDED_TEXT" = "Uw MyAnimeList token is verlopen, dus de MyAnimeList-tracker werkt niet meer totdat u zich opnieuw aanmeldt bij de instellingen.";
 "BACKUP_ERROR" = "Back-up herstel fout";
 // General
 "CONTINUE" = "Doorgaan";
@@ -308,7 +296,6 @@
 "ADD_TO_CATEGORY" = "Voeg toe aan categorie";
 "RENAME_CATEGORY_INFO" = "Voer een nieuwe naam in voor deze categorie.";
 "RENAME_CATEGORY_FAIL" = "Kan de naam van de categorie niet wijzigen";
-"PIN_MANGA" = "Manga vastzetten";
 "ONLY_UPDATE_ON_WIFI" = "Alleen over Wifi updaten";
 "CLEAR_NETWORK_CACHE" = "Netwerk-cache legen";
 "CLEAR_NETWORK_CACHE_TEXT" = "Deze actie is onomkeerbaar. Netwerkverzoeken en afbeeldingen in de cache worden verwijderd.";

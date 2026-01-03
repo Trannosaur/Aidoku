@@ -60,10 +60,7 @@
 "READER" = "Cititor";
 "OPEN_READER_VIEW" = "Deschideți Vizualizare cititor";
 "UNREAD_CHAPTER_BADGES" = "Insigne de capitol necitite";
-"PIN_MANGA" = "Pin Manga";
-"PIN_MANGA_TYPE" = "Tip de pin";
-"PIN_MANGA_UNREAD" = "Necitit";
-"PIN_MANGA_UPDATED" = "Actualizat";
+"PIN_UNREAD" = "Necitit";
 "LIBRARY_UPDATING" = "Actualizarea bibliotecii";
 "UPDATE_INTERVAL" = "Interval de actualizare";
 "SKIP_TITLES" = "Săriți peste titluri";
@@ -173,7 +170,6 @@
 "RENAME_CATEGORY" = "Redenumiți categoria";
 "RENAME_CATEGORY_FAIL_INFO" = "Numele categoriilor trebuie să fie unice.";
 "CATEGORY_NAME" = "Denumirea categoriei";
-"SYNC_WITH_TRACKER" = "Sincronizare cu Tracker";
 "MIGRATE_SOURCES" = "Migrează sursele";
 "START_MATCHING" = "Începeți potrivirea";
 "SYNC_LOCAL_HISTORY" = "Sincronizează cu istoricului local";
@@ -190,12 +186,11 @@
 "MIGRATE_%i_ITEMS?" = "Migrați %i elemente?";
 "MIGRATE_ONE_ITEM?" = "Migrați 1 element?";
 "UPLOAD_DATE" = "Data încărcării";
-"TRACKING" = "Urmărire";
+"IS_TRACKING" = "Urmărire";
 "INSTALLED" = "Instalate";
 "UNREAD" = "Necitit";
 "CANCEL" = "Anulează";
 "UNKNOWN" = "Necunoscut";
-"LIBRARY_ADD_FROM_BROWSE" = "Adăugați manga din fila de navigare";
 "REMOVE_CHAPTER_HISTORY_TEXT" = "Acest lucru va elimina istoricul pentru acest capitol. Sunteți sigur că doriți să continuați?";
 "LATEST_CHAPTER" = "Ultimul capitol";
 "DEFAULT_CATEGORY" = "Categoria implicită";
@@ -206,10 +201,8 @@
 "BROWSE" = "Navighează";
 "BROWSE_NO_SOURCES" = "Nu există surse";
 "CATEGORY_ADD_TEXT" = "Introduceți titlul noii categorii create.";
-"CATEGORY_TITLE" = "Titlul categoriei";
 "ADDING_SOURCES_GUIDE_BUTTON" = "Ghid de adăugare a surselor";
 "VERSION" = "Versiune";
-"BROWSE_NO_SOURCES_TEXT" = "Configurați lista de surse sau deschideți o listă \nde surse în Aidoku pentru a începe";
 "EXTERNAL" = "Externe";
 "BUTTON_UPDATE" = "ACTUALIZARE";
 "BUTTON_GET" = "OBȚINEȚI";
@@ -293,7 +286,6 @@
 "SEARCH" = "Căutare";
 "AUTH_TO_DISABLE" = "Autentificați-vă pentru a dezactiva.";
 "ABOUT" = "Despre";
-"SHOW_NSFW_SOURCES" = "Afișați sursele NSFW";
 "EVERY_12_HOURS" = "La fiecare 12 ore";
 "EVERY_2_DAYS" = "La fiecare 2 zile";
 "WITH_UNREAD_CHAPTERS" = "Cu capitole necitite";
@@ -307,7 +299,6 @@
 "LOGGING" = "Jurnale";
 "RESET_SETTINGS_TEXT" = "Această acțiune este ireversibilă. Toate setările aplicației și ale sursei vor fi resetate.";
 "LOGOUT_FROM_%@" = "Doriți să vă deconectați de la %@?";
-"SYNC_WITH_TRACKER_INFO" = "Se pare că ultimul capitol setat în tracker (%g) este mai mare decât ultimul capitol citit. Doriți să vă actualizați istoricul local pentru a se potrivi?";
 "NOT_PUBLISHED" = "Nepublicat";
 "CLEAR_TRACKED_MANGA" = "Șterge lista de manga urmărite";
 "CLEAR_TRACKED_MANGA_TEXT" = "Această acțiune este ireversibilă. Urmărirea tuturor urmăritorilor adăugați la manga va fi eliminată.";
@@ -327,3 +318,12 @@
 "PIN" = "Fixează";
 "UNPIN" = "Anulare fixare";
 "CROP_BORDERS" = "Decupează Colțurile";
+"DONE" = "Gata";
+"INVALID" = "Invalid";
+"PAUSE" = "Pauză";
+"RESUME" = "Continuă";
+"WARNING" = "Avertizare";
+"ENABLE_PERMISSION" = "Activează Permisia";
+"PHOTOS_ACCESS_DENIED_TEXT" = "Accesul a fost refuzat anterior. Te rugăm să permiți Aidoku acces la Fotografii pentru a salva imaginile în Galeria ta. Poți activa accesul din Setările de confidențialitate.";
+"CONTENT" = "Conținut";
+"%@_EXPERIMENTAL" = "%@ (Experimental)";

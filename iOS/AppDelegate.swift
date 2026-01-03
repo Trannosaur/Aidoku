@@ -5,9 +5,9 @@
 //  Created by Skitty on 12/29/21.
 //
 
-import UIKit
-import Nuke
 import AidokuRunner
+import CloudKit
+import Nuke
 import SwiftUI
 
 @UIApplicationMain
@@ -22,20 +22,46 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private var networkObserverId: UUID?
 
     private lazy var loadingAlert: UIAlertController = {
-        let loadingAlert = UIAlertController(title: nil, message: NSLocalizedString("LOADING_ELLIPSIS", comment: ""), preferredStyle: .alert)
+        let loadingAlert = UIAlertController(
+            title: nil,
+            message: NSLocalizedString("LOADING_ELLIPSIS"),
+            preferredStyle: .alert
+        )
         progressView.tintColor = loadingAlert.view.tintColor
         loadingAlert.view.addSubview(progressView)
         loadingAlert.view.addSubview(loadingIndicator)
+
+        progressView.translatesAutoresizingMaskIntoConstraints = false
+        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+
+        let progressViewSidePadding: CGFloat
+        let progressViewBottomPadding: CGFloat
+        let indicatorViewSidePadding: CGFloat
+        if #available(iOS 26.0, *) {
+            progressViewSidePadding = 32
+            progressViewBottomPadding = 16
+            indicatorViewSidePadding = 16
+        } else {
+            progressViewSidePadding = 16
+            progressViewBottomPadding = 8
+            indicatorViewSidePadding = 10
+        }
+
         NSLayoutConstraint.activate([
             progressView.centerXAnchor.constraint(equalTo: loadingAlert.view.centerXAnchor),
-            progressView.bottomAnchor.constraint(equalTo: loadingAlert.view.bottomAnchor, constant: -8),
-            progressView.widthAnchor.constraint(equalTo: loadingAlert.view.widthAnchor, constant: -30)
+            progressView.bottomAnchor.constraint(equalTo: loadingAlert.view.bottomAnchor, constant: -progressViewBottomPadding),
+            progressView.widthAnchor.constraint(equalTo: loadingAlert.view.widthAnchor, constant: -(progressViewSidePadding * 2)),
+
+            loadingIndicator.centerYAnchor.constraint(equalTo: loadingAlert.view.centerYAnchor),
+            loadingIndicator.leadingAnchor.constraint(equalTo: loadingAlert.view.leadingAnchor, constant: indicatorViewSidePadding),
+            loadingIndicator.widthAnchor.constraint(equalToConstant: 50),
+            loadingIndicator.heightAnchor.constraint(equalToConstant: 50)
         ])
         return loadingAlert
     }()
 
     private lazy var loadingIndicator: UIActivityIndicatorView = {
-        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        let loadingIndicator = UIActivityIndicatorView(frame: .zero)
         loadingIndicator.style = .medium
         loadingIndicator.tag = 3
         return loadingIndicator
@@ -44,7 +70,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private lazy var progressView: UIProgressView = {
         let progressView = UIProgressView(frame: .zero)
         progressView.progress = 0
-        progressView.translatesAutoresizingMaskIntoConstraints = false
         return progressView
     }()
 
@@ -87,19 +112,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 "General.icloudSync": false,
                 "General.appearance": 0,
                 "General.useSystemAppearance": true,
-                "General.useMangaTint": true,
                 "General.portraitRows": UIDevice.current.userInterfaceIdiom == .pad ? 5 : 2,
                 "General.landscapeRows": UIDevice.current.userInterfaceIdiom == .pad ? 6 : 4,
 
                 "Library.sortOption": 2, // lastOpened
                 "Library.sortAscending": false,
+                "Library.listView": false,
 
                 "Library.lastUpdated": Date.distantPast.timeIntervalSince1970,
 
                 "Library.opensReaderView": false,
                 "Library.unreadChapterBadges": true,
-                "Library.pinManga": false,
-                "Library.pinMangaType": 0,
+                "Library.downloadedChapterBadges": true,
+                "Library.pinTitles": LibraryViewModel.PinType.none.rawValue,
                 "Library.lockLibrary": false,
 
                 "Library.lockedCategories": [String](),
@@ -107,14 +132,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 "Library.updateInterval": "daily",
                 "Library.skipTitles": ["hasUnread", "completed", "notStarted"],
                 "Library.excludedUpdateCategories": [String](),
+                "Library.backgroundRefresh": true,
                 "Library.updateOnlyOnWifi": true,
                 "Library.refreshMetadata": false,
-                "Library.deleteDownloadAfterReading": false,
 
                 "Browse.languages": ["multi"] + Locale.preferredLanguages.map { Locale(identifier: $0).languageCode },
+                "Browse.contentRatings": ["safe", "containsNsfw"],
                 "Browse.updateCount": 0,
-                "Browse.showNsfwSources": false,
-                "Browse.labelNsfwSources": true,
 
                 "History.lockHistoryTab": false,
 
@@ -126,23 +150,64 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 "Reader.upscaleMaxHeight": 2000,
                 "Reader.cropBorders": false,
                 "Reader.disableQuickActions": false,
+                "Reader.liveText": true,
                 "Reader.tapZones": "disabled",
                 "Reader.invertTapZones": false,
                 "Reader.animatePageTransitions": true,
                 "Reader.backgroundColor": "black",
                 "Reader.pagesToPreload": 2,
                 "Reader.pagedPageLayout": "auto",
+                "Reader.pagedIsolateFirstPage": false,
+                "Reader.splitWideImages": false,
+                "Reader.reverseSplitOrder": false,
                 "Reader.verticalInfiniteScroll": true,
                 "Reader.pillarbox": false,
                 "Reader.pillarboxAmount": 15,
                 "Reader.pillarboxOrientation": "both",
-                "Reader.orientation": "device"
+                "Reader.orientation": "device",
+
+                "Tracking.updateAfterReading": true,
+                "Tracking.autoSyncFromTracker": false,
+
+                "AutomaticBackups.enabled": true,
+                "AutomaticBackups.interval": "daily",
+                "AutomaticBackups.lastBackup": Date.distantPast.timeIntervalSince1970,
+                "AutomaticBackups.libraryEntries": true,
+                "AutomaticBackups.chapters": true,
+                "AutomaticBackups.tracking": true,
+                "AutomaticBackups.history": true,
+                "AutomaticBackups.categories": true,
+                "AutomaticBackups.readingSessions": true,
+                "AutomaticBackups.updates": false,
+                "AutomaticBackups.settings": true,
+                "AutomaticBackups.sourceLists": true,
+                "AutomaticBackups.sensitiveSettings": false,
+
+                "Library.downloadOnlyOnWifi": false,
+                "Library.deleteDownloadAfterReading": false,
+                "Downloads.compress": true,
+                "Downloads.parallel": true,
+                "Downloads.background": true
             ]
         )
 
+        // check for icloud availability
+        // https://developer.apple.com/documentation/foundation/filemanager/url(forubiquitycontaineridentifier:)
+        // Do not call this method from your app’s main thread. Because this method might take a nontrivial amount of
+        // time to set up iCloud and return the requested URL, you should always call it from a secondary thread.
+        Task.detached {
+            let isiCloudAvailable = FileManager.default.url(forUbiquityContainerIdentifier: nil) != nil
+            await MainActor.run {
+                if !isiCloudAvailable {
+                    LogManager.logger.info("iCloud unavailable")
+                }
+                UserDefaults.standard.register(defaults: ["isiCloudAvailable": isiCloudAvailable])
+            }
+        }
+
         DataLoader.sharedUrlCache.diskCapacity = 0
 
-        let pipeline = ImagePipeline {
+        let pipeline = ImagePipeline(delegate: self) {
             let dataLoader: DataLoader = {
                 let config = URLSessionConfiguration.default
                 config.urlCache = nil
@@ -161,30 +226,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         ImagePipeline.shared = pipeline
 
-        // migrate history to 0.6 format
-        if UserDefaults.standard.string(forKey: "currentVersion") == "0.5" {
-            Task.detached {
-                await self.migrateHistory()
-            }
-        }
-
-        UserDefaults.standard.set(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, forKey: "currentVersion")
+        performMigration()
+        handleChaptersToBeDeleted()
 
         networkObserverId = Reachability.registerConnectionTypeObserver { connectionType in
             switch connectionType {
-            case .wifi:
-                if UserDefaults.standard.bool(forKey: "Library.downloadOnlyOnWifi") {
-                    DownloadManager.shared.ignoreConnectionType = false
-                    DownloadManager.shared.resumeDownloads()
-                }
-            case .cellular, .none:
-                if UserDefaults.standard.bool(forKey: "Library.downloadOnlyOnWifi") && !DownloadManager.shared.ignoreConnectionType {
-                    DownloadManager.shared.pauseDownloads()
-                }
+                case .wifi:
+                    if UserDefaults.standard.bool(forKey: "Library.downloadOnlyOnWifi") {
+                        Task {
+                            await DownloadManager.shared.resumeDownloads()
+                        }
+                    }
+                case .cellular, .none:
+                    if UserDefaults.standard.bool(forKey: "Library.downloadOnlyOnWifi") {
+                        Task {
+                            await DownloadManager.shared.pauseDownloads()
+                        }
+                    }
             }
         }
 
         application.applicationSupportsShakeToEdit = true
+
+        BackupManager.shared.register()
+        MangaManager.shared.register()
+
+        Task {
+            await BackupManager.shared.scheduleAutoBackup()
+            await MangaManager.shared.scheduleLibraryRefresh()
+        }
 
         return true
     }
@@ -197,26 +267,68 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
     }
 
-    func application(_ application: UIApplication, open url: URL, sourceApplication: String?, annotation: Any) -> Bool {
-        handleUrl(url: url)
-        return true
-    }
-
     func applicationWillTerminate(_ application: UIApplication) {
         guard let networkObserverId else { return }
         Reachability.unregisterConnectionTypeObserver(networkObserverId)
     }
+}
 
-    func migrateHistory() async {
+extension AppDelegate {
+    func performMigration() {
+        // migrate history to 0.6 format
+        if UserDefaults.standard.string(forKey: "currentVersion") == "0.5" {
+            Task.detached {
+                await self.migrateHistory()
+            }
+        }
+
+        // migrate showNsfwSources setting
+        if UserDefaults.standard.bool(forKey: "Browse.showNsfwSources") {
+            UserDefaults.standard.setValue(["safe", "containsNsfw", "primarilyNsfw"], forKey: "Browse.contentRatings")
+            UserDefaults.standard.removeObject(forKey: "Browse.showNsfwSources")
+        }
+
+        // migrate pin settings
+        if UserDefaults.standard.bool(forKey: "Library.pinManga") {
+            let newValue = switch UserDefaults.standard.integer(forKey: "Library.pinMangaType") {
+                case 0: LibraryViewModel.PinType.unread.rawValue
+                case 1: LibraryViewModel.PinType.updatedChapters.rawValue
+                default: LibraryViewModel.PinType.none.rawValue
+            }
+            UserDefaults.standard.set(newValue, forKey: "Library.pinTitles")
+            UserDefaults.standard.removeObject(forKey: "Library.pinManga")
+            UserDefaults.standard.removeObject(forKey: "Library.pinMangaType")
+        }
+
+        UserDefaults.standard.set(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, forKey: "currentVersion")
+    }
+
+    private func migrateHistory() async {
         showLoadingIndicator(style: .progress)
         try? await Task.sleep(nanoseconds: 500 * 1000000)
-        await CoreDataManager.shared.migrateChapterHistory(progress: { progress in
+        await CoreDataManager.shared.migrateChapterHistory(progress: { @Sendable progress in
             Task { @MainActor in
                 self.indicatorProgress = progress
             }
         })
         NotificationCenter.default.post(name: Notification.Name("updateLibrary"), object: nil)
-        hideLoadingIndicator()
+        await hideLoadingIndicator()
+    }
+
+    // delete chapters queued for deletion in last launch
+    func handleChaptersToBeDeleted() {
+        guard
+            let data = UserDefaults.standard.data(forKey: "chaptersToBeDeleted"),
+            let chapterKeys = try? JSONDecoder().decode([ChapterIdentifier].self, from: data)
+        else {
+            return
+        }
+        Task {
+            await DownloadManager.shared.delete(chapters: chapterKeys.map {
+                .init(sourceKey: $0.sourceKey, mangaKey: $0.mangaKey, chapterKey: $0.chapterKey)
+            })
+            UserDefaults.standard.removeObject(forKey: "chaptersToBeDeleted")
+        }
     }
 
     enum LoadingStyle {
@@ -224,24 +336,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         case progress
     }
 
+    /// Shows a non-interactive loading indicator.
     func showLoadingIndicator(style: LoadingStyle = .indefinite, completion: (() -> Void)? = nil) {
         switch style {
-        case .indefinite:
-            loadingIndicator.startAnimating()
-            loadingIndicator.isHidden = false
-            progressView.isHidden = true
-        case .progress:
-            progressView.progress = 0
-            loadingIndicator.isHidden = true
-            progressView.isHidden = false
+            case .indefinite:
+                loadingIndicator.startAnimating()
+                loadingIndicator.isHidden = false
+                progressView.isHidden = true
+            case .progress:
+                progressView.progress = 0
+                loadingIndicator.isHidden = true
+                progressView.isHidden = false
         }
-        visibleViewController?.present(loadingAlert, animated: true, completion: completion)
+        topViewController?.present(loadingAlert, animated: true, completion: completion)
     }
 
-    func hideLoadingIndicator(completion: (() -> Void)? = nil) {
-        loadingAlert.dismiss(animated: true) {
-            self.loadingIndicator.stopAnimating()
-            completion?()
+    /// Dismisses a shown loading indicator.
+    func hideLoadingIndicator(completion: (() -> Void)? = nil) async {
+        await withCheckedContinuation { continuation in
+            loadingAlert.dismiss(animated: true) {
+                self.loadingIndicator.stopAnimating()
+                continuation.resume()
+            }
         }
     }
 
@@ -299,7 +415,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             } else {
                 // check for tracker auth callback
                 // this shouldn't really be called since authentication should be performed within the app
-                if let tracker = TrackerManager.shared.trackers.first(where: {
+                if let tracker = TrackerManager.trackers.first(where: {
                     ($0 as? OAuthTracker)?.callbackHost == url.host
                 }) as? OAuthTracker {
                     Task {
@@ -313,7 +429,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         } else if url.pathExtension == "aix" {
             Task {
-                let result = try? await SourceManager.shared.importSource(from: url)
+                let result = await SourceManager.shared.importSource(from: url)
                 if result == nil {
                     presentAlert(
                         title: NSLocalizedString("IMPORT_FAIL", comment: ""),
@@ -322,16 +438,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 }
             }
         } else if url.pathExtension == "json" || url.pathExtension == "aib" {
-            if BackupManager.shared.importBackup(from: url) {
-                presentAlert(
-                    title: NSLocalizedString("BACKUP_IMPORT_SUCCESS", comment: ""),
-                    message: NSLocalizedString("BACKUP_IMPORT_SUCCESS_TEXT", comment: "")
-                )
-            } else {
-                presentAlert(
-                    title: NSLocalizedString("IMPORT_FAIL", comment: ""),
-                    message: NSLocalizedString("BACKUP_IMPORT_FAIL_TEXT", comment: "")
-                )
+            Task {
+                if await BackupManager.shared.importBackup(from: url) {
+                    presentAlert(
+                        title: NSLocalizedString("BACKUP_IMPORT_SUCCESS", comment: ""),
+                        message: NSLocalizedString("BACKUP_IMPORT_SUCCESS_TEXT", comment: "")
+                    )
+                } else {
+                    presentAlert(
+                        title: NSLocalizedString("IMPORT_FAIL", comment: ""),
+                        message: NSLocalizedString("BACKUP_IMPORT_FAIL_TEXT", comment: "")
+                    )
+                }
             }
         } else if
             SourceManager.shared.localSourceInstalled
@@ -473,7 +591,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                             for (mangaId, oldId) in historyChapterIds where newChapterIds[oldId] == nil  {
                                 newChapterIds[oldId] = try? await source.handleMigration(kind: .chapter, mangaKey: mangaId, chapterKey: oldId)
                             }
-                            await CoreDataManager.shared.container.performBackgroundTask { context in
+                            await CoreDataManager.shared.container.performBackgroundTask { [newMangaIds, newChapterIds] context in
                                 let libraryObjects = CoreDataManager.shared.getLibraryManga(sourceId: source.id, context: context)
                                 let chapterObjects = CoreDataManager.shared.getChapters(sourceId: source.id, context: context)
                                 let historyObjects = CoreDataManager.shared.getHistory(sourceId: source.id, context: context)
@@ -502,7 +620,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                             NotificationCenter.default.post(name: .updateLibrary, object: nil)
                             NotificationCenter.default.post(name: .updateHistory, object: nil)
 
-                            self.hideLoadingIndicator()
+                            await self.hideLoadingIndicator()
                         }
                     } else {
                         // otherwise, we just show the migration view and let the user do it
@@ -528,6 +646,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         message: String? = nil,
         actions: [UIAlertAction] = [],
         textFieldHandlers: [((UITextField) -> Void)] = [],
+        textFieldDisablesLastActionWhenEmpty: Bool = false,
         completion: (() -> Void)? = nil
     ) {
         let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
@@ -535,6 +654,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         for handler in textFieldHandlers {
             alertController.addTextField { textField in
                 handler(textField)
+
+                if textFieldDisablesLastActionWhenEmpty && textFieldHandlers.count == 1 {
+                    actions.last?.isEnabled = !(textField.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+
+                    NotificationCenter.default.addObserver(forName: UITextField.textDidChangeNotification, object: textField, queue: .main) { _ in
+                        Task { @MainActor in
+                            let text = textField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                            actions.last?.isEnabled = !text.isEmpty
+                        }
+                    }
+                }
             }
         }
 
@@ -549,5 +679,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         topViewController?.present(alertController, animated: true, completion: completion)
+    }
+}
+
+extension AppDelegate: ImagePipelineDelegate {
+    nonisolated func imageDecoder(for context: ImageDecodingContext, pipeline: ImagePipeline) -> (any ImageDecoding)? {
+        if context.request.userInfo[.processesKey] as? Bool == true {
+            // when using a page processor, don't decode data as an image since it may be invalid
+            ImageDecoders.Empty.init()
+        } else {
+            pipeline.configuration.makeImageDecoder(context)
+        }
     }
 }

@@ -81,11 +81,9 @@ struct MangaCoverPageView: View {
             .navigationTitle(NSLocalizedString("COVER"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
+                ToolbarItem(placement: .cancellationAction) {
+                    CloseButton {
                         dismiss()
-                    } label: {
-                        Text(NSLocalizedString("DONE")).bold()
                     }
                 }
             }
@@ -107,13 +105,14 @@ struct MangaCoverPageView: View {
                 }
             }
             .task {
-                await CoreDataManager.shared.container.performBackgroundTask { context in
-                    hasEditedCover = CoreDataManager.shared.hasEditedKey(
+                (hasEditedCover, inLibrary) = await CoreDataManager.shared.container.performBackgroundTask { [manga, inLibrary] context in
+                    let hasEditedCover = CoreDataManager.shared.hasEditedKey(
                         sourceId: manga.sourceKey,
                         mangaId: manga.key,
                         key: .cover,
                         context: context
                     )
+                    var inLibrary = inLibrary
                     if inLibrary == nil {
                         inLibrary = CoreDataManager.shared.hasLibraryManga(
                             sourceId: manga.sourceKey,
@@ -121,6 +120,7 @@ struct MangaCoverPageView: View {
                             context: context
                         )
                     }
+                    return (hasEditedCover, inLibrary)
                 }
                 await loadCovers()
             }

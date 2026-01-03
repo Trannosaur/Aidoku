@@ -32,7 +32,6 @@
 // Categories
 "ALL" = "Todos";
 "CATEGORY_ADD_TEXT" = "Insira o Título da nova categoria a ser criada.";
-"CATEGORY_TITLE" = "Título da categoria";
 "DEFAULT_CATEGORY" = "Categoria Padrão";
 "ADDING_SOURCES_GUIDE_BUTTON" = "Guia para Adicionar Fontas";
 "UPDATES" = "Atualizações";
@@ -120,7 +119,6 @@
 "RENAME" = "Renomear";
 "CLEAR" = "Limpar";
 "REMOVE_DOWNLOADS" = "Remover descargas";
-"LIBRARY_ADD_FROM_BROWSE" = "Adicionar Mangás da Guia Explorar";
 "ADD_TO_LIBRARY" = "Adicionar para Biblioteca";
 "TITLE" = "Título";
 "LAST_OPENED" = "Último Aberto";
@@ -133,7 +131,6 @@
 // Browse
 "BROWSE" = "Explorar";
 "BROWSE_NO_SOURCES" = "Sem Fontes";
-"BROWSE_NO_SOURCES_TEXT" = "Configure a sua lista de fontes ou abra\numa fonte no Aidoku para iniciar";
 "BUTTON_UPDATE" = "ATUALIZAR";
 "BUTTON_GET" = "OBTER";
 "BUTTON_ERROR" = "ERRO";
@@ -193,10 +190,7 @@
 "LANDSCAPE" = "Paisagem";
 "OPEN_READER_VIEW" = "Abrir Visualização do Leitor";
 "UNREAD_CHAPTER_BADGES" = "Bolha de Capítulos Não Lidos";
-"PIN_MANGA" = "Fixar Mangás";
-"PIN_MANGA_TYPE" = "Tipo de Fixação";
-"PIN_MANGA_UNREAD" = "Não Lido";
-"PIN_MANGA_UPDATED" = "Atualizado";
+"PIN_UNREAD" = "Não Lido";
 "LIBRARY_UPDATING" = "Atualização da biblioteca";
 "UPDATE_INTERVAL" = "Intervalo de Atualização";
 "SKIP_TITLES" = "Pular Obras";
@@ -214,7 +208,6 @@
 "SOURCE_LISTS" = "Listas de Fontes";
 "SOURCE_LIST_ADDED" = "Lista de Fontes Adicionada";
 "SOURCE_LIST_ADDED_TEXT" = "Agora pode procurar fontes externas na guia Explorar.";
-"SHOW_NSFW_SOURCES" = "Mostrar Fontes NSFW";
 "SOURCE_LIST_URL" = "URL da Lista de Fontes";
 "SOURCE_LIST_ADD" = "Adicionar Lista de Fontes";
 "SOURCE_LIST_ADD_TEXT" = "Digite o URL da Lista de Fontes";
@@ -296,7 +289,7 @@
 "WEBTOON" = "Webtoon";
 "AVAILABLE" = "Disponível";
 "FIRST_ALTERNATIVE" = "Pirmeira Alternativa";
-"TRACKING" = "Tracking";
+"IS_TRACKING" = "Tracking";
 "PILLARBOX" = "Efeito Pillarbox";
 "PILLARBOX_ORIENTATION" = "Orientação Pillarbox";
 "PILLARBOX_ORIENTATION_INFO" = "A Orientação Pillarbox determina que orientações deve ser habilitada.";
@@ -308,10 +301,8 @@
 "UPCOMING" = "Próximo";
 "RENAME_CATEGORY" = "Renomear categoria";
 "1_CHAPTER" = "1 Capítulo";
-"SYNC_WITH_TRACKER" = "Sincronizar com o rastreador";
 "MOST_CHAPTERS_SLOWER" = "Maioria dos capítulos (mais lento)";
 "MIGRATE_ONE_ITEM?" = "Migrar 1 elemento?";
-"SYNC_WITH_TRACKER_INFO" = "Parece que o último capítulo definido no rastreador (%g) é maior que o último capítulo lido. Gostava de atualizar o seu histórico local para os combinar?";
 "START_MATCHING" = "Começar a combinar";
 "SYNC_LOCAL_HISTORY" = "Sincronizar História Local";
 "SELECTED" = "Selecionado";
@@ -327,12 +318,8 @@
 "PIN" = "Fixar";
 "UNPIN" = "Desfixar";
 "COPY" = "Copiar";
-"ANILIST_LOGIN_NEEDED" = "Necessário iniciar sessão na AniList";
-"ANILIST_LOGIN_NEEDED_TEXT" = "O seu token AniList expirou, pelo que o localizador AniList deixará de funcionar até voltar a iniciar sessão nas definições.";
-"MAL_LOGIN_NEEDED_TEXT" = "O teu token MyAnimeList expirou, pelo que o localizador MyAnimeList deixará de funcionar até voltares a iniciar sessão nas definições.";
 "BACKUP_ERROR" = "Erro de restauro de backup";
 "BACKUP_ERROR_TEXT" = "Foi encontrado um erro durante o restauro: %@. O backup pode ser inválido.";
-"MAL_LOGIN_NEEDED" = "MyAnimeList Necessário iniciar sessão";
 "DELETE_DOWNLOAD_AFTER_READING" = "Apagar download após leitura";
 "READER_BG_COLOR_WHITE" = "Branco";
 "SCANLATOR" = "Escâner";
@@ -359,7 +346,6 @@
 "ENABLE_PERMISSION" = "Ativar permissão";
 "CONTENT" = "Conteúdo";
 "%@_EXPERIMENTAL" = "%@ (Experimental)";
-"DOWNLOAD_MANAGER" = "Gestor de descargas";
 "NO_DOWNLOADS" = "Sem descargas";
 "TOTAL_DOWNLOADS" = "Total de descargas";
 "%i_SERIES" = "%i series";
@@ -386,7 +372,6 @@
 "NO_RESULTS" = "Sem resultados";
 "NO_EXTERNAL_SOURCES" = "Nenhumas fontes externas";
 "ALL_SOURCES_INSTALLED" = "Todas as fontes instaladas";
-"LOCAL_SOURCE" = "Fonte local";
 "LOCAL_FILES" = "Ficheiros locais";
 "LOCAL_FILES_TAGLINE" = "Ler dos ficheiros locais";
 "IMPORT" = "Importar";

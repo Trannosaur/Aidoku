@@ -75,13 +75,13 @@ extension CoreDataManager {
     }
 
     /// Set LibraryManga last read date to current date.
-    func setRead(sourceId: String, mangaId: String, context: NSManagedObjectContext? = nil) {
+    func setRead(sourceId: String, mangaId: String, date: Date? = nil, context: NSManagedObjectContext? = nil) {
         let request = LibraryMangaObject.fetchRequest()
         request.predicate = NSPredicate(format: "manga.sourceId == %@ AND manga.id == %@", sourceId, mangaId)
         request.fetchLimit = 1
         do {
             if let object = (try context?.fetch(request))?.first {
-                object.lastRead = Date()
+                object.lastRead = date ?? Date.now
             }
         } catch {
             LogManager.logger.error("setRead: \(error.localizedDescription)")
@@ -98,6 +98,7 @@ extension CoreDataManager {
         let mangaObject = self.getOrCreateManga(manga, sourceId: sourceId, context: context)
         let libraryObject = LibraryMangaObject(context: context ?? self.context)
         libraryObject.manga = mangaObject
+        libraryObject.lastChapter = chapters.compactMap { $0.dateUploaded }.max()
         self.setChapters(chapters, sourceId: sourceId, mangaId: manga.key, context: context)
     }
 }

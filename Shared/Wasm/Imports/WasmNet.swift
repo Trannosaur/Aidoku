@@ -15,6 +15,24 @@ enum HttpMethod: Int {
     case HEAD = 2
     case PUT = 3
     case DELETE = 4
+    case PATCH = 5
+    case OPTIONS = 6
+    case CONNECT = 7
+    case TRACE = 8
+
+    var stringValue: String {
+        switch self {
+            case .GET: "GET"
+            case .POST: "POST"
+            case .PUT: "PUT"
+            case .HEAD: "HEAD"
+            case .DELETE: "DELETE"
+            case .PATCH: "PATCH"
+            case .OPTIONS: "OPTIONS"
+            case .CONNECT: "CONNECT"
+            case .TRACE: "TRACE"
+        }
+    }
 }
 
 class WasmResponseObject: KVCObject {
@@ -36,10 +54,10 @@ class WasmResponseObject: KVCObject {
 
     func valueByPropertyName(name: String) -> Any? {
         switch name {
-        case "data": return data != nil ? [UInt8](data!) : []
-        case "headers": return headers != nil ? headers : (response as? HTTPURLResponse)?.allHeaderFields
-        case "status_code": return statusCode != nil ? statusCode : (response as? HTTPURLResponse)?.statusCode
-        default: return nil
+            case "data": return data != nil ? [UInt8](data!) : []
+            case "headers": return headers != nil ? headers : (response as? HTTPURLResponse)?.allHeaderFields
+            case "status_code": return statusCode != nil ? statusCode : (response as? HTTPURLResponse)?.statusCode
+            default: return nil
         }
     }
 }
@@ -55,12 +73,12 @@ struct WasmRequestObject: KVCObject {
 
     func valueByPropertyName(name: String) -> Any? {
         switch name {
-        case "url": return URL
-        case "method": return method?.rawValue
-        case "headers": return headers
-        case "body": return body
-        case "response": return response
-        default: return nil
+            case "url": return URL
+            case "method": return method?.rawValue
+            case "headers": return headers
+            case "body": return body
+            case "response": return response
+            default: return nil
         }
     }
 }
@@ -261,14 +279,8 @@ extension WasmNet {
 
             // set body
             if let body = request.body { urlRequest.httpBody = body }
-            switch request.method {
-            case .GET: urlRequest.httpMethod = "GET"
-            case .POST: urlRequest.httpMethod = "POST"
-            case .HEAD: urlRequest.httpMethod = "HEAD"
-            case .PUT: urlRequest.httpMethod = "PUT"
-            case .DELETE: urlRequest.httpMethod = "DELETE"
-            default: break
-            }
+
+            urlRequest.httpMethod = request.method?.stringValue
 
             let response = self.performRequest(urlRequest, cloudflare: true)
             self.globalStore.requests[descriptor]?.response = response

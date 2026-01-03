@@ -5,15 +5,14 @@
 //  Created by Skitty on 1/23/22.
 //
 
-import UIKit
-import SwiftUI
+import AidokuRunner
 import SafariServices
+import SwiftUI
 
 class BrowseViewController: BaseTableViewController {
-
     let viewModel = BrowseViewModel()
 
-    lazy var dataSource = makeDataSource()
+    private lazy var dataSource = makeDataSource()
 
     private lazy var refreshControl = UIRefreshControl()
     private lazy var emptyStackView = EmptyPageStackView()
@@ -36,8 +35,24 @@ class BrowseViewController: BaseTableViewController {
         searchController.obscuresBackgroundDuringPresentation = false
         navigationItem.searchController = searchController
 
-        // Initial navbar with migration and lang select buttons.
-        self.updateNavbar()
+        // toolbar buttons
+        let deleteButton = UIBarButtonItem(
+            title: nil,
+            style: .plain,
+            target: self,
+            action: #selector(deleteSelected)
+        )
+        deleteButton.image = UIImage(systemName: "trash")
+        if #unavailable(iOS 26.0) {
+            deleteButton.tintColor = .systemRed
+        }
+        toolbarItems = [
+            deleteButton,
+            UIBarButtonItem(systemItem: .flexibleSpace)
+        ]
+
+        updateNavbar()
+        updateToolbar()
 
         // configure table view
         tableView.dataSource = dataSource
@@ -54,10 +69,14 @@ class BrowseViewController: BaseTableViewController {
         tableView.sectionFooterHeight = 8
         tableView.separatorStyle = .none
         tableView.backgroundColor = .systemBackground
+        tableView.keyboardDismissMode = .onDrag
+        tableView.allowsMultipleSelectionDuringEditing = true
+
         refreshControl.addTarget(self, action: #selector(refreshSourceLists(_:)), for: .valueChanged)
         tableView.refreshControl = refreshControl
 
         // empty text
+        emptyStackView.imageSystemName = "globe"
         emptyStackView.title = NSLocalizedString("BROWSE_NO_SOURCES", comment: "")
         emptyStackView.text = NSLocalizedString("BROWSE_NO_SOURCES_TEXT_NEW", comment: "")
         emptyStackView.buttonText = NSLocalizedString("ADDING_SOURCES_GUIDE_BUTTON", comment: "")
@@ -72,6 +91,7 @@ class BrowseViewController: BaseTableViewController {
         updateDataSource()
         Task {
             await viewModel.loadExternalSources()
+            viewModel.loadUpdates()
             updateDataSource()
         }
     }
@@ -87,12 +107,12 @@ class BrowseViewController: BaseTableViewController {
 
     override func observe() {
         // source installed/imported/pinned
-        addObserver(forName: "updateSourceList") { [weak self] _ in
+        addObserver(forName: .updateSourceList) { [weak self] _ in
             guard let self = self else { return }
             Task { @MainActor in
                 self.viewModel.loadInstalledSources()
                 self.viewModel.loadPinnedSources()
-                self.viewModel.filterExternalSources()
+                self.viewModel.loadUpdates()
                 if let query = self.navigationItem.searchController?.searchBar.text, !query.isEmpty {
                     self.viewModel.search(query: query)
                 }
@@ -100,26 +120,11 @@ class BrowseViewController: BaseTableViewController {
             }
         }
         // source lists added/removed
-        addObserver(forName: "updateSourceLists") { [weak self] _ in
+        addObserver(forName: .updateSourceLists) { [weak self] _ in
             guard let self = self else { return }
             Task {
                 await self.viewModel.loadExternalSources()
-                self.updateDataSource()
-            }
-        }
-        // show nsfw sources setting
-        addObserver(forName: "Browse.showNsfwSources") { [weak self] _ in
-            guard let self = self else { return }
-            Task {
-                self.viewModel.filterExternalSources()
-                self.updateDataSource()
-            }
-        }
-        // browse language selection
-        addObserver(forName: "Browse.languages") { [weak self] _ in
-            guard let self = self else { return }
-            Task {
-                self.viewModel.filterExternalSources()
+                self.viewModel.loadUpdates()
                 self.updateDataSource()
             }
         }
@@ -136,7 +141,6 @@ class BrowseViewController: BaseTableViewController {
             Task { @MainActor in
                 self.viewModel.loadInstalledSources()
                 self.viewModel.loadPinnedSources()
-                self.viewModel.filterExternalSources()
                 self.updateDataSource()
             }
         }
@@ -159,6 +163,46 @@ class BrowseViewController: BaseTableViewController {
         }
     }
 
+    override func setEditing(_ editing: Bool, animated: Bool) {
+        super.setEditing(editing, animated: animated)
+        tableView.setEditing(editing, animated: animated)
+        updateNavbar()
+        updateToolbar()
+    }
+}
+
+extension BrowseViewController {
+    func uninstall(sources: [AidokuRunner.Source]) {
+        let containsLocalSource = sources.contains(where: { $0.id == LocalSourceRunner.sourceKey })
+
+        func commit() {
+            for source in sources {
+                SourceManager.shared.remove(source: source)
+            }
+            self.viewModel.loadInstalledSources()
+            self.updateDataSource()
+            self.setEditing(false, animated: true)
+        }
+
+        if containsLocalSource {
+            self.presentAlert(
+                title: NSLocalizedString("REMOVE_LOCAL_SOURCE"),
+                message: NSLocalizedString("REMOVE_LOCAL_SOURCE_TEXT"),
+                actions: [
+                    UIAlertAction(title: NSLocalizedString("CANCEL"), style: .cancel),
+                    UIAlertAction(title: NSLocalizedString("OK"), style: .default) { _ in
+                        Task {
+                            await LocalFileManager.shared.removeAllLocalFiles()
+                        }
+                        commit()
+                    }
+                ]
+            )
+        } else {
+            commit()
+        }
+    }
+
     // store update count and display badge
     func checkUpdateCount() {
         let updateCount = viewModel.updatesSources.count
@@ -172,6 +216,7 @@ class BrowseViewController: BaseTableViewController {
     @objc func refreshSourceLists(_ refreshControl: UIRefreshControl? = nil) {
         Task {
             await viewModel.loadExternalSources(reload: true)
+            self.viewModel.loadUpdates()
             updateExternalSources()
             refreshControl?.endRefreshing()
         }
@@ -188,6 +233,12 @@ class BrowseViewController: BaseTableViewController {
         let hostingController = UIHostingController(
             rootView: SwiftUINavigationView(rootView: MigrateSourcesView())
         )
+        if #available(iOS 26.0, *) {
+            hostingController.preferredTransition = .zoom { _ in
+                self.navigationItem.rightBarButtonItems?.last
+            }
+        }
+        hostingController.modalPresentationStyle = .pageSheet
         present(hostingController, animated: true)
     }
 
@@ -197,30 +248,60 @@ class BrowseViewController: BaseTableViewController {
                 .ignoresSafeArea() // fixes some weird keyboard clipping stuff
                 .environmentObject(NavigationCoordinator(rootViewController: self))
         )
+        if #available(iOS 26.0, *) {
+            hostingController.preferredTransition = .zoom { _ in
+                self.navigationItem.rightBarButtonItems?.first
+            }
+        }
+        hostingController.modalPresentationStyle = .pageSheet
         present(hostingController, animated: true)
     }
 
     @objc func stopEditing() {
-        tableView.setEditing(false, animated: true)
-        self.updateNavbar()
+        setEditing(false, animated: true)
+    }
+
+    @objc func deleteSelected() {
+        confirmAction(
+            continueActionName: NSLocalizedString("UNINSTALL"),
+            sourceItem: toolbarItems?.first
+        ) {
+            let sources = self.tableView.indexPathsForSelectedRows?.compactMap { (path: IndexPath) -> AidokuRunner.Source? in
+                guard let info = self.dataSource.itemIdentifier(for: path) else { return nil }
+                return SourceManager.shared.source(for: info.sourceId)
+            } ?? []
+            self.uninstall(sources: sources)
+        }
     }
 }
 
 // MARK: - Table View Delegate
 extension BrowseViewController {
-
-    func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCell.EditingStyle {
-        .none
+    // support two finger drag to select
+    func tableView(_ tableView: UITableView, shouldBeginMultipleSelectionInteractionAt indexPath: IndexPath) -> Bool {
+        true
     }
 
-    func tableView(_ tableView: UITableView, shouldIndentWhileEditingRowAt indexPath: IndexPath) -> Bool {
-        false
+    func tableView(_ tableView: UITableView, didBeginMultipleSelectionInteractionAt indexPath: IndexPath) {
+        setEditing(true, animated: true)
+    }
+
+    func tableView(_ tableView: UITableView, didHighlightRowAt indexPath: IndexPath) {
+        guard let cell = tableView.cellForRow(at: indexPath) else { return }
+        if isEditing {
+            // fix double selection animation when editing
+            cell.setHighlighted(false, animated: false)
+        }
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard !isEditing else {
+            updateToolbar()
+            return
+        }
         if
-            case let sectionId = sectionIdentifier(for: indexPath.section),
-            sectionId == .installed || sectionId == .pinned,
+//            case let sectionId = dataSource.sectionIdentifier(for: indexPath.section),
+//            sectionId == .installed || sectionId == .pinned,
             let info = dataSource.itemIdentifier(for: indexPath),
             let source = SourceManager.shared.source(for: info.sourceId)
         {
@@ -234,23 +315,31 @@ extension BrowseViewController {
         tableView.deselectRow(at: indexPath, animated: true)
     }
 
+    func tableView(_ tableView: UITableView, didDeselectRowAt indexPath: IndexPath) {
+        if isEditing {
+            updateToolbar()
+        }
+    }
+
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         guard
             let cell = tableView.dequeueReusableHeaderFooterView(
                 withIdentifier: String(describing: UITableViewHeaderFooterView.self)
             ),
-            let currentSection = sectionIdentifier(for: section)
-        else { return nil }
+            let currentSection = dataSource.sectionIdentifier(for: section)
+        else {
+            return nil
+        }
         var config = SmallSectionHeaderConfiguration()
         switch currentSection {
-        case .updates:
-            config.title = NSLocalizedString("UPDATES", comment: "")
-        case .pinned:
-            config.title = NSLocalizedString("PINNED", comment: "")
-        case .installed:
-            config.title = NSLocalizedString("INSTALLED", comment: "")
-        case .external:
-            config.title = NSLocalizedString("EXTERNAL", comment: "")
+            case .updates:
+                config.title = NSLocalizedString("UPDATES")
+            case .pinned:
+                config.title = NSLocalizedString("PINNED")
+            case .installed:
+                config.title = NSLocalizedString("INSTALLED")
+            case .external:
+                config.title = NSLocalizedString("EXTERNAL")
         }
         cell.contentConfiguration = config
         return cell
@@ -262,93 +351,56 @@ extension BrowseViewController {
         point: CGPoint
     ) -> UIContextMenuConfiguration? {
         guard
-            !tableView.isEditing, // do not allow context menu when the sources are being reordered
-            case let sectionId = sectionIdentifier(for: indexPath.section),
-            sectionId == .installed || sectionId == .pinned,
+            !tableView.isEditing, // do not allow context menu when the sources are being edited
+            case let section = dataSource.sectionIdentifier(for: indexPath.section),
+//            section == .installed || section == .pinned,
             let info = dataSource.itemIdentifier(for: indexPath),
             let source = SourceManager.shared.source(for: info.sourceId)
         else {
             return nil
         }
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ -> UIMenu? in
-            var actions: [UIMenuElement] = []
+            let editAction = UIMenu(title: "", options: .displayInline, children: [
+                UIAction(
+                    title: section == .pinned ? NSLocalizedString("REORDER") : NSLocalizedString("EDIT_SOURCES"),
+                    image: UIImage(systemName: section == .pinned ? "shuffle" : "minus.circle")
+                ) { _ in
+                    self.setEditing(true, animated: true)
+                }
+            ])
+
+            let pinAction = UIAction(
+                title: section == .pinned ? NSLocalizedString("UNPIN") : NSLocalizedString("PIN"),
+                image: UIImage(systemName: section == .pinned ? "pin.slash" : "pin")
+            ) { _ in
+                if section == .pinned {
+                    SourceManager.shared.unpin(source: source)
+                } else {
+                    SourceManager.shared.pin(source: source)
+                }
+                self.viewModel.loadPinnedSources()
+                self.updateDataSource()
+            }
 
             let uninstallAction = UIAction(
-                title: NSLocalizedString("UNINSTALL", comment: ""),
+                title: NSLocalizedString("UNINSTALL"),
                 image: UIImage(systemName: "trash"),
                 attributes: .destructive
             ) { _ in
-                if source.id == LocalSourceRunner.sourceKey {
-                    self.presentAlert(
-                        title: "Remove Local Source?",
-                        message: "This will remove all imported local files.",
-                        actions: [
-                            UIAlertAction(title: NSLocalizedString("CANCEL"), style: .cancel),
-                            UIAlertAction(title: NSLocalizedString("OK"), style: .default) { _ in
-                                Task {
-                                    await LocalFileManager.shared.removeAllLocalFiles()
-                                }
-                                SourceManager.shared.remove(source: source)
-                                self.viewModel.loadInstalledSources()
-                                self.updateDataSource()
-                            }
-                        ]
-                    )
-                } else {
-                    SourceManager.shared.remove(source: source)
-                    self.viewModel.loadInstalledSources()
-                    self.updateDataSource()
-                }
+                self.uninstall(sources: [source])
             }
-            switch self.sectionIdentifier(for: indexPath.section) {
-            // Context menu items for a source in Installed section of the table
-            case .installed:
-                actions = [
-                    UIAction(
-                        title: NSLocalizedString("PIN", comment: ""),
-                        image: UIImage(systemName: "pin")
-                    ) { _ in
-                        SourceManager.shared.pin(source: source)
-                        self.viewModel.loadPinnedSources()
-                        self.updateDataSource()
-                    },
-                    uninstallAction
-                ]
-            // Context menu items for a source in Pinned section of the table
-            case .pinned:
-                actions = [
-                    UIMenu(title: "", options: .displayInline, children: [
-                        UIAction(
-                            title: NSLocalizedString("REORDER", comment: ""),
-                            image: UIImage(systemName: "shuffle")
-                        ) { _ in
-                            // Let user re-order sources inside the pinned section.
-                            tableView.setEditing(true, animated: true)
-                            self.updateNavbar()
-                        }
-                    ]),
-                    UIAction(
-                        title: NSLocalizedString("UNPIN", comment: ""),
-                        image: UIImage(systemName: "pin.slash")
-                    ) { _ in
-                        // Remove source from the pinned array, recreate the installed source list and update the table.
-                        SourceManager.shared.unpin(source: source)
-                        self.viewModel.loadPinnedSources()
-                        self.updateDataSource()
-                    },
-                    uninstallAction
-                ]
-            default:
-                break
-            }
-            return UIMenu(title: "", children: actions)
+
+            return UIMenu(title: "", children: [
+                editAction,
+                pinAction,
+                uninstallAction
+            ])
         }
     }
 }
 
 // MARK: - Data Source
 extension BrowseViewController {
-
     enum Section: Int {
         case pinned
         case updates
@@ -412,16 +464,17 @@ extension BrowseViewController {
                 let cell = tableView.dequeueReusableCell(
                     withIdentifier: String(describing: SourceTableViewCell.self)
                 ) as? SourceTableViewCell,
-                let section = self.sectionIdentifier(for: indexPath.section)
+                let section = self.dataSource.sectionIdentifier(for: indexPath.section)
             else {
                 return UITableViewCell()
             }
             cell.setSourceInfo(info)
+
             if info.externalInfo != nil {
                 if section == .external {
-                    cell.buttonTitle = NSLocalizedString("BUTTON_GET", comment: "")
+                    cell.buttonTitle = NSLocalizedString("BUTTON_GET")
                 } else if section == .updates {
-                    cell.buttonTitle = NSLocalizedString("BUTTON_UPDATE", comment: "")
+                    cell.buttonTitle = NSLocalizedString("BUTTON_UPDATE")
                 }
                 cell.selectionStyle = .none
                 cell.accessoryType = .none
@@ -492,22 +545,10 @@ extension BrowseViewController {
             checkUpdateCount()
         }
     }
-
-    // Returns the identifier for the provided section index.
-    private func sectionIdentifier(for section: Int) -> Section? {
-        if #available(iOS 15.0, *) {
-            return dataSource.sectionIdentifier(for: section)
-        } else {
-            guard section >= 0 else { return nil }
-            let sections = dataSource.snapshot().sectionIdentifiers
-            return sections.count > section ? sections[section] : nil
-        }
-    }
 }
 
 // MARK: - Search Results
 extension BrowseViewController: UISearchResultsUpdating {
-
     func updateSearchResults(for searchController: UISearchController) {
         viewModel.search(query: searchController.searchBar.text)
         updateDataSource()
@@ -515,26 +556,72 @@ extension BrowseViewController: UISearchResultsUpdating {
 }
 
 extension BrowseViewController {
-    func updateNavbar() {
-        if tableView.isEditing {
-            Task { @MainActor in
-                navigationItem.rightBarButtonItems = [UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(stopEditing))]
-            }
+    func updateNavbar(isEditing: Bool? = nil) {
+        let isEditing = isEditing ?? self.isEditing
+        if isEditing {
+            navigationItem.rightBarButtonItems = [UIBarButtonItem(
+                barButtonSystemItem: .done,
+                target: self,
+                action: #selector(stopEditing)
+            )]
         } else {
+            let addSourceBarButton = UIBarButtonItem(
+                image: UIImage(systemName: "plus"),
+                style: .plain,
+                target: self,
+                action: #selector(openAddSourcePage)
+            )
+            addSourceBarButton.title = NSLocalizedString("ADD_SOURCE")
+            if #available(iOS 26.0, *) {
+                addSourceBarButton.sharesBackground = false
+            }
+
+            let migrateSourcesBarButton = UIBarButtonItem(
+                image: UIImage(systemName: "arrow.left.arrow.right"),
+                style: .plain,
+                target: self,
+                action: #selector(openMigrateSourcePage)
+            )
+            migrateSourcesBarButton.title = NSLocalizedString("MIGRATE_SOURCES")
+            if #available(iOS 26.0, *) {
+                migrateSourcesBarButton.sharesBackground = false
+            }
+
             navigationItem.rightBarButtonItems = [
-                UIBarButtonItem(
-                    image: UIImage(systemName: "plus"),
-                    style: .plain,
-                    target: self,
-                    action: #selector(openAddSourcePage)
-                ),
-                UIBarButtonItem(
-                    image: UIImage(systemName: "arrow.left.arrow.right"),
-                    style: .plain,
-                    target: self,
-                    action: #selector(openMigrateSourcePage)
-                )
+                addSourceBarButton,
+                migrateSourcesBarButton
             ]
+        }
+    }
+
+    func updateToolbar(isEditing: Bool? = nil) {
+        let isEditing = isEditing ?? self.isEditing
+        if isEditing {
+            // show toolbar
+            if navigationController?.isToolbarHidden ?? false {
+                UIView.animate(withDuration: CATransaction.animationDuration()) {
+                    self.navigationController?.isToolbarHidden = false
+                    self.navigationController?.toolbar.alpha = 1
+                    if #available(iOS 26.0, *) {
+                        // hide tab bar on iOS 26 (it covers the toolbar)
+                        self.tabBarController?.isTabBarHidden = true
+                    }
+                }
+            }
+            // enable items
+            let hasSelectedItems = !(tableView.indexPathsForSelectedRows?.isEmpty ?? true)
+            toolbarItems?.first?.isEnabled = hasSelectedItems
+        } else if !(self.navigationController?.isToolbarHidden ?? true) {
+            // fade out toolbar
+            UIView.animate(withDuration: CATransaction.animationDuration()) {
+                self.navigationController?.toolbar.alpha = 0
+                if #available(iOS 26.0, *) {
+                    // reshow tab bar on iOS 26
+                    self.tabBarController?.isTabBarHidden = false
+                }
+            } completion: { _ in
+                self.navigationController?.isToolbarHidden = true
+            }
         }
     }
 }

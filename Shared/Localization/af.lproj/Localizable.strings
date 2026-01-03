@@ -18,7 +18,6 @@
 // Library
 "LIBRARY" = "Biblioteek";
 "LIBRARY_SEARCH" = "Vind in Biblioteek";
-"LIBRARY_ADD_FROM_BROWSE" = "Voeg manga by van die blaaioortjie af";
 "ADD_TO_LIBRARY" = "Voeg by Biblioteek";
 "OK" = "OK";
 "RESET" = "Stel Terug";
@@ -39,14 +38,12 @@
 "CATEGORIES" = "Kategorieë";
 "EDIT_CATEGORIES" = "Redigeer kategorieë";
 "CATEGORY_ADD" = "Voeg Kategorie By";
-"CATEGORY_TITLE" = "Kategorie Titel";
 "DEFAULT_CATEGORY" = "Standaard Kategorie";
 "ALWAYS_ASK" = "Vra Altyd";
 
 // Browse
 "BROWSE" = "Blaai Deur";
 "BROWSE_NO_SOURCES" = "Geen bronne nie";
-"BROWSE_NO_SOURCES_TEXT" = "Stel jou bronnelys op of maak 'n \nbron in Aidoku oop om te begin";
 "ADDING_SOURCES_GUIDE_BUTTON" = "Gids Vir Bronne Byvoeging";
 "UPDATES" = "Opdaterings";
 "INSTALLED" = "Geïnstalleer";
@@ -97,7 +94,6 @@
 "THAT_HAVENT_BEEN_READ" = "Wat nie gelees is nie";
 "SOURCE_LISTS" = "Bronnelyste";
 "SOURCE_LIST_ADDED" = "Bronnelys Bygevoeg";
-"SHOW_NSFW_SOURCES" = "Wys NSFW-bronne";
 "BACKUP_IMPORT_FAIL_TEXT" = "Kon nie rugsteun stoor nie. Verseker asseblief dat jou rugsteun in die regte formaat is.";
 "EXPORT" = "Voer Uit";
 "RESTORE" = "Herstel";
@@ -184,17 +180,14 @@
 "DISCORD_SERVER" = "Discord-Bediener";
 "GENERAL" = "Algemeen";
 "READER" = "Leser";
-"PIN_MANGA_UPDATED" = "Opgedateer";
 "LIBRARY_UPDATING" = "Biblioteekopdatering";
 "UPDATE_INTERVAL" = "Opdateringsinterval";
 "LOCK_HISTORY_TAB" = "Sluit Geskiedenis Oortjie";
 "OPEN_READER_VIEW" = "Maak Lesersaansig Oop";
 "UNREAD_CHAPTER_BADGES" = "Ongeleesde hoofstuk-kentekens";
-"PIN_MANGA" = "Speld Manga";
-"PIN_MANGA_UNREAD" = "Ongeleesde";
+"PIN_UNREAD" = "Ongeleesde";
 "PORTRAIT" = "Portret";
 "LANDSCAPE" = "Landskap";
-"PIN_MANGA_TYPE" = "Speld Tipe";
 "SKIP_TITLES" = "Slaan Titels Oor";
 "SOURCE_LIST_ADD_FAIL_TEXT" = "Die URL wat verskaf word, is ongeldig of is reeds bygevoeg.";
 "SOURCE_LIST_ADDED_TEXT" = "Jy kan nou deur eksterne bronne blaai in die Blaai-lys.";

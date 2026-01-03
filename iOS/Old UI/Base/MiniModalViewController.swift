@@ -12,7 +12,6 @@ protocol MiniModalDelegate: AnyObject {
 }
 
 class MiniModalViewController: UIViewController {
-
     weak var delegate: MiniModalDelegate?
 
     var containerView: UIView = {
@@ -98,10 +97,11 @@ class MiniModalViewController: UIViewController {
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
 
-        coordinator.animate(alongsideTransition: nil) { _ in
+        coordinator.animate(alongsideTransition: { _ in
             self.maxHeight = UIScreen.main.bounds.height - 64 - 30
             self.containerViewMaxHeightConstraint?.constant = self.maxHeight
-        }
+            self.containerView.layoutIfNeeded()
+        })
     }
 
     @objc func handlePanGesture(gesture: UIPanGestureRecognizer) {
@@ -109,28 +109,28 @@ class MiniModalViewController: UIViewController {
         let translation = gesture.translation(in: view)
 
         switch gesture.state {
-        case .changed:
-            if translation.y < 0 {
-                containerViewHeightConstraint?.constant = sqrt(-translation.y)
-            } else {
-                containerViewHeightConstraint?.constant = -translation.y
-            }
-        case .ended:
-            if (translation.y > 100 && velocity.y > 1) || velocity.y > 1000 {
-                animateDismissView()
-            } else {
-                animatePresentContainer()
-            }
-            if velocity.y < 0 {
-                scrollView.isScrollEnabled = true
-            }
-        default:
-            break
+            case .changed:
+                if translation.y < 0 {
+                    containerViewHeightConstraint?.constant = sqrt(-translation.y)
+                } else {
+                    containerViewHeightConstraint?.constant = -translation.y
+                }
+            case .ended:
+                if (translation.y > 100 && velocity.y > 1) || velocity.y > 1000 {
+                    animateDismissView()
+                } else {
+                    animatePresentContainer()
+                }
+                if velocity.y < 0 {
+                    scrollView.isScrollEnabled = true
+                }
+            default:
+                break
         }
     }
 
     func animatePresentContainer() {
-        UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
+        UIView.animate(withDuration: CATransaction.animationDuration(), delay: 0, options: .curveEaseOut) {
             self.containerViewHeightConstraint?.constant = 0
             self.containerViewBottomConstraint?.constant = 0
             self.view.layoutIfNeeded()
@@ -139,7 +139,7 @@ class MiniModalViewController: UIViewController {
 
     func animateShowDimmedView() {
         dimmedView.alpha = 0
-        UIView.animate(withDuration: 0.3) {
+        UIView.animate(withDuration: CATransaction.animationDuration()) {
             self.dimmedView.alpha = self.maxDimmedAlpha
         }
     }

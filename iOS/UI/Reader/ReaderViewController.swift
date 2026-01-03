@@ -11,7 +11,6 @@ import SwiftUI
 import AidokuRunner
 
 class ReaderViewController: BaseObservingViewController {
-
     enum Reader {
         case paged
         case scroll
@@ -26,10 +25,25 @@ class ReaderViewController: BaseObservingViewController {
     var defaultReadingMode: ReadingMode?
     private var tapZone: TapZone?
 
-    var chapterList: [AidokuRunner.Chapter]
-    var chaptersToMark: [AidokuRunner.Chapter] = []
-    var chaptersToRemoveDownload: [AidokuRunner.Chapter] = []
-    var currentPage = 1
+    private var chapterList: [AidokuRunner.Chapter]
+    private var chaptersToMark: [AidokuRunner.Chapter] = []
+    private var chaptersToRemoveDownload: [AidokuRunner.Chapter] = [] {
+        didSet {
+            // ensure chapters queued for deletion are persistent, in case of app termination
+            if chaptersToRemoveDownload.isEmpty {
+                UserDefaults.standard.removeObject(forKey: "chaptersToBeDeleted")
+            } else {
+                let data = try? JSONEncoder().encode(chaptersToRemoveDownload.map {
+                    ChapterIdentifier(sourceKey: manga.sourceKey, mangaKey: manga.key, chapterKey: $0.key)
+                })
+                UserDefaults.standard.set(data, forKey: "chaptersToBeDeleted")
+            }
+        }
+    }
+    private var currentPage = 1
+    private var sessionReadPages: Set<Int> = []
+    private var sessionStartDate: Date?
+    private var sessionLastInteraction: Date?
 
     weak var reader: ReaderReaderDelegate?
 
@@ -158,14 +172,16 @@ class ReaderViewController: BaseObservingViewController {
         toolbarView.sliderView.addTarget(self, action: #selector(sliderStopped(_:)), for: .editingDidEnd)
         toolbarView.translatesAutoresizingMaskIntoConstraints = false
         let toolbarButtonItemView = UIBarButtonItem(customView: toolbarView)
-        toolbarButtonItemView.customView?.transform = CGAffineTransform(translationX: 0, y: -10)
         toolbarButtonItemView.customView?.heightAnchor.constraint(equalToConstant: 40).isActive = true
         if #available(iOS 26.0, *) {
             toolbarViewWidthConstraint = toolbarButtonItemView.customView?.widthAnchor.constraint(
                 equalToConstant: node.bounds.width - 32 - 10
             )
+            // shift down farther to account for different toolbar and slider knob size
+            toolbarButtonItemView.customView?.transform = CGAffineTransform(translationX: 0, y: -5)
         } else {
             toolbarViewWidthConstraint = toolbarButtonItemView.customView?.widthAnchor.constraint(equalToConstant: view.bounds.width)
+            toolbarButtonItemView.customView?.transform = CGAffineTransform(translationX: 0, y: -10)
         }
 
         add(child: descriptionButtonController)
@@ -215,28 +231,32 @@ class ReaderViewController: BaseObservingViewController {
             // if the tap zone is auto, it will changed based on the current reader
             self.updateTapZone()
         }
+        let reloadBlock: (Notification) -> Void = { [weak self] _ in
+            guard let self else { return }
+            self.reader?.setChapter(self.chapter, startPage: self.currentPage)
+        }
         // reload pages when processors change
-        addObserver(forName: "Reader.downsampleImages") { [weak self] _ in
-            guard let self else { return }
-            self.reader?.setChapter(self.chapter, startPage: self.currentPage)
-        }
-        addObserver(forName: "Reader.upscaleImages") { [weak self] _ in
-            guard let self else { return }
-            self.reader?.setChapter(self.chapter, startPage: self.currentPage)
-        }
-        addObserver(forName: "Reader.cropBorders") { [weak self] _ in
-            guard let self else { return }
-            self.reader?.setChapter(self.chapter, startPage: self.currentPage)
-        }
-        addObserver(forName: "Reader.tapZones") { [weak self] _ in
-            self?.updateTapZone()
-        }
+        addObserver(forName: "Reader.downsampleImages", using: reloadBlock)
+        addObserver(forName: "Reader.upscaleImages", using: reloadBlock)
+        addObserver(forName: "Reader.cropBorders", using: reloadBlock)
+        addObserver(forName: "Reader.liveText", using: reloadBlock)
+        addObserver(forName: "Reader.tapZones", using: reloadBlock)
         addObserver(forName: UIScene.willDeactivateNotification) { [weak self] _ in
             guard let self else { return }
-            self.updateReadPosition()
+            Task {
+                await self.updateReadPosition()
+            }
 
             if #available(iOS 26.0, *) {
                 statusBarHidden = false
+            }
+        }
+        addObserver(forName: UIScene.didActivateNotification) { [weak self] _ in
+            guard let self else { return }
+            if self.sessionStartDate == nil {
+                self.sessionReadPages = [self.currentPage]
+                self.sessionStartDate = Date.now
+                self.sessionLastInteraction = nil
             }
         }
         if #available(iOS 26.0, *) {
@@ -250,22 +270,38 @@ class ReaderViewController: BaseObservingViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        sessionReadPages = [self.currentPage]
+        sessionStartDate = Date.now
+        sessionLastInteraction = nil
+
+        if navigationController?.toolbar.alpha == 0 {
+            hideBars()
+        }
+
         // there's a bug on ios 15 where the toolbar just disappears when adding a child hosting controller
         navigationController?.isToolbarHidden = false
         navigationController?.toolbar.alpha = 1
+
+        disableSwipeGestures()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
         if !chaptersToRemoveDownload.isEmpty {
-            DownloadManager.shared.delete(chapters: chaptersToRemoveDownload.map {
-                $0.toOld(sourceId: source?.key ?? manga.sourceKey, mangaId: manga.key)
-            })
+            Task {
+                await DownloadManager.shared.delete(chapters: chaptersToRemoveDownload.map {
+                    .init(sourceKey: manga.sourceKey, mangaKey: manga.key, chapterKey: $0.key)
+                })
+                chaptersToRemoveDownload = []
+            }
         }
 
         guard currentPage >= 1 else { return }
-        updateReadPosition()
+        Task {
+            await updateReadPosition()
+        }
     }
 
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
@@ -280,35 +316,83 @@ class ReaderViewController: BaseObservingViewController {
         }
     }
 
-    func updateReadPosition() {
+    func disableSwipeGestures() {
+        let isWebtoonReader = reader is ReaderWebtoonViewController
+
+        // the view with the target gesture recognizers changes based on if it was presented from uikit or swiftui
+        let gestureRecognizers = (parent?.view.gestureRecognizers ?? []) + (parent?.view.superview?.superview?.gestureRecognizers ?? [])
+
+        for recognizer in gestureRecognizers {
+            switch String(describing: type(of: recognizer)) {
+                case "_UIParallaxTransitionPanGestureRecognizer": // swipe edge gesture
+                    recognizer.isEnabled = isWebtoonReader
+
+                case "_UIContentSwipeDismissGestureRecognizer": // swipe down gesture
+                    recognizer.isEnabled = !isWebtoonReader
+                    recognizer.delegate = self // ensure gesture only activates on swipe down, not swipe right
+
+//                case "_UITransformGestureRecognizer": // pinch gesture
+//                    recognizer.isEnabled = true
+
+                default:
+                    break
+            }
+        }
+    }
+
+    func updateReadPosition(
+        currentPage: Int? = nil,
+        totalPages: Int? = nil,
+        chapter: AidokuRunner.Chapter? = nil
+    ) async {
         guard
             !UserDefaults.standard.bool(forKey: "General.incognitoMode"),
-            (toolbarView.totalPages ?? 0) > 0
-        else { return }
-        Task {
-            // don't add history if there is none and we're at the first page
-            let sourceId = source?.key ?? manga.sourceKey
-            let mangaId = manga.key
-            if currentPage == 1 {
-                let chapterId = chapter.key
-                let hasHistory = await CoreDataManager.shared.container.performBackgroundTask { @Sendable context in
-                    !CoreDataManager.shared.hasHistory(
-                        sourceId: sourceId,
-                        mangaId: mangaId,
-                        chapterId: chapterId,
-                        context: context
-                    )
-                }
-                if hasHistory {
-                    return
-                }
-            }
-            await HistoryManager.shared.setProgress(
-                chapter: chapter.toOld(sourceId: sourceId, mangaId: mangaId),
-                progress: currentPage,
-                totalPages: toolbarView.totalPages
+            (totalPages ?? toolbarView.totalPages ?? 0) > 0 // ensure chapter pages are loaded
+        else {
+            return
+        }
+
+        let currentPage = currentPage ?? self.currentPage
+        let chapter = chapter ?? self.chapter
+
+        let sourceId = manga.sourceKey
+        let mangaId = manga.key
+        let chapterId = chapter.key
+        let (completed, progress) = await CoreDataManager.shared.container.performBackgroundTask { @Sendable context in
+            CoreDataManager.shared.getProgress(
+                sourceId: sourceId,
+                mangaId: mangaId,
+                chapterId: chapterId,
+                context: context
             )
         }
+        let hasHistory = completed || progress != nil
+
+        // don't add history if there is none and we're at the first page
+        if currentPage == 1 && !hasHistory {
+            return
+        }
+
+        await HistoryManager.shared.setProgress(
+            chapter: chapter.toOld(sourceId: sourceId, mangaId: mangaId),
+            progress: currentPage,
+            totalPages: toolbarView.totalPages,
+            completed: completed
+        )
+        await saveReadingSession(chapter: chapter)
+    }
+
+    private func saveReadingSession(chapter: AidokuRunner.Chapter? = nil) async {
+        guard let sessionStartDate else { return }
+        let pagesRead = sessionReadPages.count
+        if pagesRead > 0 && sessionLastInteraction != nil {
+            let chapter = chapter ?? self.chapter
+            await HistoryManager.shared.addSession(
+                chapterIdentifier: .init(sourceKey: manga.sourceKey, mangaKey: manga.key, chapterKey: chapter.key),
+                data: .init(startDate: sessionStartDate, endDate: .now, pagesRead: pagesRead)
+            )
+        }
+        self.sessionStartDate = nil
     }
 
     func loadChapterList() async {
@@ -389,8 +473,10 @@ class ReaderViewController: BaseObservingViewController {
         )
         view.chapterSet = { [weak self] chapter in
             guard let self else { return }
-            self.setChapter(chapter)
-            self.loadCurrentChapter()
+            if chapter != self.chapter {
+                self.setChapter(chapter)
+                self.loadCurrentChapter()
+            }
         }
         let vc = UIHostingController(rootView: view)
         present(vc, animated: true)
@@ -412,41 +498,41 @@ class ReaderViewController: BaseObservingViewController {
 extension ReaderViewController {
     func setReadingMode(_ mode: String?) {
         switch mode {
-        case "rtl": readingMode = .rtl
-        case "ltr": readingMode = .ltr
-        case "vertical": readingMode = .vertical
-        case "scroll", "webtoon": readingMode = .webtoon
-        case "continuous": readingMode = .continuous
-        case "default":
-            let defaultMode = UserDefaults.standard.string(forKey: "Reader.readingMode")
-            if defaultMode == "default" {
-                setReadingMode("auto")
-            } else {
-                setReadingMode(defaultMode)
-            }
-            return
-        default: // auto
-            // use given default reading mode
-            if let defaultReadingMode {
-                readingMode = defaultReadingMode
-            } else if CoreDataManager.shared.hasManga(
-                sourceId: source?.key ?? manga.sourceKey,
-                mangaId: manga.key
-            ) {
-                // fall back to stored manga viewer
-                let sourceMode = CoreDataManager.shared.getMangaSourceReadingMode(
+            case "rtl": readingMode = .rtl
+            case "ltr": readingMode = .ltr
+            case "vertical": readingMode = .vertical
+            case "scroll", "webtoon": readingMode = .webtoon
+            case "continuous": readingMode = .continuous
+            case "default":
+                let defaultMode = UserDefaults.standard.string(forKey: "Reader.readingMode")
+                if defaultMode == "default" {
+                    setReadingMode("auto")
+                } else {
+                    setReadingMode(defaultMode)
+                }
+                return
+            default: // auto
+                // use given default reading mode
+                if let defaultReadingMode {
+                    readingMode = defaultReadingMode
+                } else if CoreDataManager.shared.hasManga(
                     sourceId: source?.key ?? manga.sourceKey,
                     mangaId: manga.key
-                )
-                if let mode = ReadingMode(rawValue: sourceMode) {
-                    readingMode = mode
+                ) {
+                    // fall back to stored manga viewer
+                    let sourceMode = CoreDataManager.shared.getMangaSourceReadingMode(
+                        sourceId: source?.key ?? manga.sourceKey,
+                        mangaId: manga.key
+                    )
+                    if let mode = ReadingMode(rawValue: sourceMode) {
+                        readingMode = mode
+                    } else {
+                        readingMode = .rtl
+                    }
                 } else {
+                    // fall back to rtl reading mode
                     readingMode = .rtl
                 }
-            } else {
-                // fall back to rtl reading mode
-                readingMode = .rtl
-            }
         }
 
         if !(reader is ReaderTextViewController) {
@@ -495,11 +581,13 @@ extension ReaderViewController {
             add(child: pageController, below: descriptionButtonController.view)
         }
         reader?.readingMode = readingMode
+        disableSwipeGestures()
     }
 }
 
 // MARK: - Reader Holding Delegate
 extension ReaderViewController: ReaderHoldingDelegate {
+    var barsHidden: Bool { statusBarHidden }
 
     func getNextChapter() -> AidokuRunner.Chapter? {
         guard
@@ -516,9 +604,10 @@ extension ReaderViewController: ReaderHoldingDelegate {
 
         while index >= 0 {
             let new = chapterList[index]
+            let identifier = ChapterIdentifier(sourceKey: manga.sourceKey, mangaKey: manga.key, chapterKey: new.key)
 
             let readable = !new.locked
-                || DownloadManager.shared.getDownloadStatus(for: new.toOld(sourceId: manga.sourceKey, mangaId: manga.key)) == .finished
+                || DownloadManager.shared.getDownloadStatus(for: identifier) == .finished
 
             if readable {
                 let isDuplicate =
@@ -555,9 +644,10 @@ extension ReaderViewController: ReaderHoldingDelegate {
         index += 1
         while index < chapterList.count {
             let new = chapterList[index]
+            let identifier = ChapterIdentifier(sourceKey: manga.sourceKey, mangaKey: manga.key, chapterKey: new.key)
 
             let readable = !new.locked
-                || DownloadManager.shared.getDownloadStatus(for: new.toOld(sourceId: manga.sourceKey, mangaId: manga.key)) == .finished
+                || DownloadManager.shared.getDownloadStatus(for: identifier) == .finished
 
             if readable {
                 let isDuplicate =
@@ -577,6 +667,19 @@ extension ReaderViewController: ReaderHoldingDelegate {
     }
 
     func setChapter(_ chapter: AidokuRunner.Chapter) {
+        guard chapter != self.chapter else { return }
+
+        // store current history data since it will change when new chapter loads
+        let currentPage = currentPage
+        let totalPages = toolbarView.totalPages
+        let oldChapter = self.chapter
+        Task {
+            await updateReadPosition(currentPage: currentPage, totalPages: totalPages, chapter: oldChapter)
+            sessionReadPages = [self.currentPage]
+            sessionStartDate = Date.now
+            sessionLastInteraction = nil
+        }
+
         self.chapter = chapter
         self.chaptersToMark = [chapter]
         loadNavbarTitle()
@@ -590,6 +693,12 @@ extension ReaderViewController: ReaderHoldingDelegate {
         guard let totalPages = toolbarView.totalPages else { return }
 
         updateDescriptionButton(pages: pages)
+
+        sessionLastInteraction = Date.now
+        for page in pages {
+            guard page >= 1 && page <= totalPages else { continue }
+            sessionReadPages.insert(page)
+        }
 
         let page = max(1, min(pages.lowerBound, totalPages))
         currentPage = page
@@ -627,7 +736,7 @@ extension ReaderViewController: ReaderHoldingDelegate {
         if pages.isEmpty {
             // no pages, show error
             showLoadFailAlert()
-        } else if pages.count == 1 && pages[0].text != nil {
+        } else if pages.count == 1 && pages[0].isTextPage {
             // single text page, should switch to text reader
             if !(reader is ReaderTextViewController) {
                 setReader(.text)
@@ -638,10 +747,10 @@ extension ReaderViewController: ReaderHoldingDelegate {
             // otherwise, make sure we're not in the text reader
             if reader is ReaderTextViewController {
                 switch readingMode {
-                case .ltr, .rtl, .vertical:
-                    setReader(.paged)
-                case .webtoon, .continuous:
-                    setReader(.scroll)
+                    case .ltr, .rtl, .vertical:
+                        setReader(.paged)
+                    case .webtoon, .continuous:
+                        setReader(.scroll)
                 }
                 setChapter(chapter)
                 loadCurrentChapter()
@@ -661,9 +770,9 @@ extension ReaderViewController: ReaderHoldingDelegate {
         if !UserDefaults.standard.bool(forKey: "General.incognitoMode") {
             Task {
                 await HistoryManager.shared.addHistory(
-                    chapters: chaptersToMark.map {
-                        $0.toOld(sourceId: source?.key ?? manga.sourceKey, mangaId: manga.key)
-                    }
+                    sourceId: manga.sourceKey,
+                    mangaId: manga.key,
+                    chapters: chaptersToMark
                 )
             }
         }
@@ -734,7 +843,7 @@ extension ReaderViewController {
 
 // MARK: - Bar Visibility
 extension ReaderViewController {
-    func toggleBarVisibility() {
+    @objc func toggleBarVisibility() {
         guard let navigationController else { return }
         if navigationController.navigationBar.alpha > 0 {
             hideBars()
@@ -751,6 +860,8 @@ extension ReaderViewController {
             self.setNeedsStatusBarAppearanceUpdate()
             self.setNeedsUpdateOfHomeIndicatorAutoHidden()
         } completion: { _ in
+            NotificationCenter.default.post(name: .readerShowingBars, object: nil)
+
             UIView.setAnimationsEnabled(false)
             if #available(iOS 26.0, *) {
                 if navigationController.isToolbarHidden {
@@ -764,6 +875,7 @@ extension ReaderViewController {
                 }
             }
             self.pageDescriptionButtonBottomConstraint.constant = 0
+            navigationController.navigationBar.isHidden = false
             UIView.setAnimationsEnabled(true)
             UIView.animate(withDuration: CATransaction.animationDuration()) {
                 navigationController.navigationBar.alpha = 1
@@ -771,7 +883,15 @@ extension ReaderViewController {
                 if #available(iOS 26.0, *) {
                     (navigationController.value(forKey: "_floatingBarContainerView") as? UIView)?.alpha = 1
                 }
-                self.node.backgroundColor = .systemBackground
+                self.node.backgroundColor = if UserDefaults.standard.bool(forKey: "General.useSystemAppearance") {
+                    .systemBackground
+                } else {
+                    if UserDefaults.standard.integer(forKey: "General.appearance") == 0 {
+                        .white
+                    } else {
+                        .black
+                    }
+                }
                 self.node.layoutIfNeeded()
             }
         }
@@ -785,6 +905,8 @@ extension ReaderViewController {
             self.setNeedsStatusBarAppearanceUpdate()
             self.setNeedsUpdateOfHomeIndicatorAutoHidden()
         } completion: { _ in
+            NotificationCenter.default.post(name: .readerHidingBars, object: nil)
+
             self.pageDescriptionButtonBottomConstraint.constant = 30
 
             UIView.animate(withDuration: CATransaction.animationDuration()) {
@@ -796,15 +918,16 @@ extension ReaderViewController {
                 }
 
                 self.node.backgroundColor = switch UserDefaults.standard.string(forKey: "Reader.backgroundColor") {
-                case "system":
-                    .systemBackground
-                case "white":
-                    .white
-                default:
-                    .black
+                    case "system":
+                        .systemBackground
+                    case "white":
+                        .white
+                    default:
+                        .black
                 }
                 self.node.layoutIfNeeded()
             } completion: { _ in
+                navigationController.navigationBar.isHidden = true
                 if #available(iOS 26.0, *) {
                     navigationController.isToolbarHidden = true
                 } else {
@@ -815,85 +938,59 @@ extension ReaderViewController {
     }
 }
 
+// MARK: - UIGestureRecognizerDelegate
+extension ReaderViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
+        let velocity = pan.velocity(in: pan.view)
+        return velocity.y > velocity.x && (abs(velocity.x) < 40 || abs(velocity.y) > abs(velocity.x) * 3)
+    }
+}
+
 // MARK: - Keyboard Shortcuts
 extension ReaderViewController {
     override var canBecomeFirstResponder: Bool { true }
 
     override var keyCommands: [UIKeyCommand]? {
-        [
+        let commands = [
             UIKeyCommand(
                 title: NSLocalizedString("TURN_PAGE_LEFT"),
                 action: #selector(moveLeft),
-                input: UIKeyCommand.inputLeftArrow,
-                modifierFlags: [],
-                alternates: [],
-                attributes: [],
-                state: .off
+                input: UIKeyCommand.inputLeftArrow
             ),
             UIKeyCommand(
                 title: NSLocalizedString("TURN_PAGE_RIGHT"),
                 action: #selector(moveRight),
-                input: UIKeyCommand.inputRightArrow,
-                modifierFlags: [],
-                alternates: [],
-                attributes: [],
-                state: .off
+                input: UIKeyCommand.inputRightArrow
             ),
-//            UIKeyCommand(
-//                title: "Scroll up",
-//                action: #selector(scrollUp),
-//                input: UIKeyCommand.inputUpArrow,
-//                modifierFlags: [],
-//                alternates: [],
-//                attributes: [],
-//                state: .off
-//            ),
-//            UIKeyCommand(
-//                title: "Scroll down",
-//                action: #selector(scrollDown),
-//                input: UIKeyCommand.inputDownArrow,
-//                modifierFlags: [],
-//                alternates: [],
-//                attributes: [],
-//                state: .off
-//            ),
             UIKeyCommand(
                 title: NSLocalizedString("CHAPTER_FORWARD"),
                 action: #selector(nextChapter),
-                input: ",",
-                modifierFlags: [],
-                alternates: [],
-                attributes: [],
-                state: .off
+                input: ","
             ),
             UIKeyCommand(
                 title: NSLocalizedString("CHAPTER_BACKWARD"),
                 action: #selector(previousChapter),
-                input: ".",
-                modifierFlags: [],
-                alternates: [],
-                attributes: [],
-                state: .off
+                input: "."
             ),
             UIKeyCommand(
                 title: NSLocalizedString("OPEN_CHAPTER_LIST"),
                 action: #selector(openChapterList),
-                input: "\t",
-                modifierFlags: [],
-                alternates: [],
-                attributes: [],
-                state: .off
+                input: "\t"
+            ),
+            UIKeyCommand(
+                title: NSLocalizedString("TOGGLE_BARS"),
+                action: #selector(toggleBarVisibility),
+                input: " "
             ),
             UIKeyCommand(
                 title: NSLocalizedString("CLOSE_READER"),
                 action: #selector(close),
-                input: UIKeyCommand.inputEscape,
-                modifierFlags: [],
-                alternates: [],
-                attributes: [],
-                state: .off
+                input: UIKeyCommand.inputEscape
             )
         ]
+        commands.forEach { $0.wantsPriorityOverSystemBehavior = true }
+        return commands
     }
 
     @objc func moveLeft() {

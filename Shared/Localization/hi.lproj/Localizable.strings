@@ -24,7 +24,6 @@
 
 // Library
 "LIBRARY" = "लाइब्रेरी";
-"LIBRARY_ADD_FROM_BROWSE" = "माँगा ब्राउज़ टाब से जोड़े";
 "ADD_TO_LIBRARY" = "लाइब्रेरी में जोड़े";
 "REMOVE_FROM_LIBRARY" = "लाइब्रेरी से हटाएँ";
 "LAST_OPENED" = "पिछली बार खोला गया";
@@ -39,7 +38,6 @@
 "EDIT_CATEGORIES" = "एडिट कैटेगॉरीज़";
 "CATEGORY_ADD" = "कैटेगॉरी जोड़े";
 "CATEGORY_ADD_TEXT" = "नए कैटेगॉरी को बनाने के लिए टाइटल एंटर करें।";
-"CATEGORY_TITLE" = "कैटेगॉरी टाइटल";
 "DEFAULT_CATEGORY" = "डिफ़ॉल्ट कैटेगॉरी";
 "ALWAYS_ASK" = "हमेशा पूछे";
 
@@ -129,7 +127,6 @@
 "MANGA_INFO" = "माँगा जानकारी";
 "REMOVE_DOWNLOADS_CONFIRM" = "क्या आप निश्चित है की आप सभी सिलेक्टेड डाउन्लोड्ज़ को हटाना चाहते है?";
 "TITLE" = "टाइटल";
-"BROWSE_NO_SOURCES_TEXT" = "शुरुआत करने के लिए अपने सोर्स लाइट को कन्फ़िग्यर \nकरे या आइडोकु में सोर्स खोले";
 "LIBRARY_EMPTY" = "लाइब्रेरी ख़ाली";
 "FILTER_BY" = "फ़िल्टर बाई";
 "INFO" = "जानकारी";
@@ -164,10 +161,7 @@
 "READER" = "रीडर";
 "OPEN_READER_VIEW" = "रीडर व्यू खोले";
 "UNREAD_CHAPTER_BADGES" = "अपठित अध्याय बैजेज़";
-"PIN_MANGA" = "माँगा को पिन करे";
-"PIN_MANGA_TYPE" = "पिन टाइप";
-"PIN_MANGA_UNREAD" = "अपठित";
-"PIN_MANGA_UPDATED" = "अप्डेटेड";
+"PIN_UNREAD" = "अपठित";
 "LIBRARY_UPDATING" = "लाइब्रेरी अप्डेटिंग";
 "UPDATE_INTERVAL" = "अप्डेट इंटर्वल";
 "SKIP_TITLES" = "टाइटल स्किप करे";
@@ -180,7 +174,6 @@
 "WITH_UNREAD_CHAPTERS" = "अपठित अध्याय के साथ";
 "SOURCE_LISTS" = "सोर्स सूचि";
 "SOURCE_LIST_ADDED" = "सोर्स लिस्ट जोड़ दिया गया है";
-"SHOW_NSFW_SOURCES" = "नसफ़व सॉर्सेज़ दिखाए";
 "SOURCE_LIST_URL" = "सोर्स लिस्ट यूआरएल";
 "SOURCE_LIST_ADD" = "सोर्स लिस्ट जोड़े";
 "SOURCE_LIST_ADD_TEXT" = "सोर्स लिस्ट यूआरएल डाले";
@@ -246,5 +239,4 @@
 "RENAME_BACKUP_TEXT" = "बैकअप के लिए नया नाम डाले";
 "ONE_PAGE_LEFT" = "1 पृष्ठ बाकी";
 "%i_PAGES_LEFT" = "%i पृष्ठ बाकी";
-"SYNC_WITH_TRACKER" = "ट्रैकर के साथ सिंक करें";
 "SUPPORT_VIA_KOFI" = "Ko-Fi के माध्यम से सहयोग करे";

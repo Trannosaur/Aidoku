@@ -5,79 +5,85 @@
 //  Created by Koding Dev on 19/7/2022.
 //
 
+import AidokuRunner
 import Foundation
 
 /// AniList tracker for Aidoku.
-class AniListTracker: OAuthTracker {
+final class AniListTracker: OAuthTracker {
     let id = "anilist"
     let name = "AniList"
     let icon = PlatformImage(named: "anilist")
 
-    let supportedStatuses = TrackStatus.defaultStatuses
-    var scoreType: TrackScoreType = .tenPoint
-    var scoreOptions: [(String, Int)] = []
-    private var anilistScoreType: String?
-
     let api = AniListApi()
 
     let callbackHost = "anilist-auth"
-    lazy var authenticationUrl = api.oauth.getAuthenticationUrl(responseType: "token") ?? ""
-
     var oauthClient: OAuthClient { api.oauth }
 
-    init() {
-        // get user score type preference
-        Task {
-            await getScoreType()
+    func getTrackerInfo() async -> TrackerInfo {
+        let scoreType: TrackScoreType
+        let scoreOptions: [(String, Int)]
+        if isLoggedIn {
+            let scoreFormat = await api.getStoreType()
+            switch scoreFormat {
+                case "POINT_100":
+                    scoreType = .hundredPoint
+                    scoreOptions = []
+                case "POINT_10_DECIMAL":
+                    scoreType = .tenPointDecimal
+                    scoreOptions = []
+                case "POINT_10":
+                    scoreType = .tenPoint
+                    scoreOptions = []
+                case "POINT_5":
+                    scoreType = .optionList
+                    scoreOptions = Array(0...5).map { ("\($0) ★", $0 == 0 ? 0 : $0 * 20 - 10) }
+                case "POINT_3":
+                    scoreType = .optionList
+                    scoreOptions = [
+                        ("-", 0),
+                        ("😦", 35),
+                        ("😐", 60),
+                        ("😊", 85)
+                    ]
+                default:
+                    scoreType = .tenPoint
+                    scoreOptions = []
+            }
+        } else {
+            scoreType = .tenPoint
+            scoreOptions = []
         }
+        return .init(
+            supportedStatuses: TrackStatus.defaultStatuses,
+            scoreType: scoreType,
+            scoreOptions: scoreOptions
+        )
     }
 
-    func getScoreType() async {
-        guard isLoggedIn else { return }
-
-        let user = await api.getUser()
-        anilistScoreType = user?.mediaListOptions?.scoreFormat
-        switch user?.mediaListOptions?.scoreFormat {
-            case "POINT_100": scoreType = .hundredPoint
-            case "POINT_10_DECIMAL": scoreType = .tenPointDecimal
-            case "POINT_10": scoreType = .tenPoint
-            case "POINT_5":
-                scoreType = .optionList
-                scoreOptions = Array(0...5).map { ("\($0) ★", $0 == 0 ? 0 : $0 * 20 - 10) }
-            case "POINT_3":
-                scoreType = .optionList
-                scoreOptions = [
-                    ("-", 0),
-                    ("😦", 35),
-                    ("😐", 60),
-                    ("😊", 85)
-                ]
-            default: break
+    func option(for score: Int, options: [(String, Int)]) -> String? {
+        let isSmilies = options.count == 4
+        let isStars = options.count == 6
+        if isSmilies {
+            // smiley faces
+            if score == 0 {
+                return options[0].0
+            } else if score <= 35 {
+                return options[1].0
+            } else if score <= 60 {
+                return options[2].0
+            } else {
+                return options[3].0
+            }
+        } else if isStars {
+            // stars
+            if score == 0 {
+                return options[0].0
+            } else {
+                let index = Int(max(1, min((Float(score) + 10) / 20, 5)).rounded())
+                return options[index].0
+            }
         }
-    }
-
-    func option(for score: Int) -> String? {
-        switch anilistScoreType {
-            case "POINT_5":
-                if score == 0 {
-                    return scoreOptions[0].0
-                } else {
-                    let index = Int(max(1, min((Float(score) + 10) / 20, 5)).rounded())
-                    return scoreOptions[index].0
-                }
-            case "POINT_3":
-                if score == 0 {
-                    return scoreOptions[0].0
-                } else if score <= 35 {
-                    return scoreOptions[1].0
-                } else if score <= 60 {
-                    return scoreOptions[2].0
-                } else {
-                    return scoreOptions[3].0
-                }
-            default:
-                return nil
-        }
+        return nil
     }
 
     func register(trackId: String, highestChapterRead: Float?, earliestReadDate: Date?) async throws -> String? {
@@ -101,7 +107,8 @@ class AniListTracker: OAuthTracker {
             throw AniListTrackerError.invalidId
         }
         var update = update
-        if scoreType == .tenPoint && update.score != nil {
+        let scoreType = await api.getStoreType()
+        if scoreType == "POINT_10" && update.score != nil {
             update.score = update.score! * 10
         }
         await api.update(media: id, update: update)
@@ -116,8 +123,9 @@ class AniListTracker: OAuthTracker {
         }
 
         let score: Int?
+        let scoreType = await api.getStoreType()
         if let scoreRaw = result.mediaListEntry?.score {
-            score = scoreType == .tenPoint ? Int(scoreRaw / 10) : Int(scoreRaw)
+            score = scoreType == "POINT_10" ? Int(scoreRaw / 10) : Int(scoreRaw)
         } else {
             score = nil
         }
@@ -138,8 +146,8 @@ class AniListTracker: OAuthTracker {
         URL(string: "https://anilist.co/manga/\(trackId)")
     }
 
-    func search(for manga: Manga, includeNsfw: Bool) async -> [TrackSearchItem] {
-        await search(title: manga.title ?? "", nsfw: includeNsfw)
+    func search(for manga: AidokuRunner.Manga, includeNsfw: Bool) async -> [TrackSearchItem] {
+        await search(title: manga.title, nsfw: includeNsfw)
     }
 
     func search(title: String, includeNsfw: Bool) async -> [TrackSearchItem] {
@@ -154,8 +162,7 @@ class AniListTracker: OAuthTracker {
             guard let media = await api.getMedia(id: id) else { return [] }
             return [TrackSearchItem(
                 id: String(media.id ?? 0),
-                trackerId: self.id,
-                title: media.title?.english ?? media.title?.romaji,
+                title: media.title?.userPreferred,
                 coverUrl: media.coverImage?.medium,
                 description: media.description,
                 status: getPublishingStatus(statusString: media.status ?? ""),
@@ -175,8 +182,7 @@ class AniListTracker: OAuthTracker {
         return page.media.map {
             TrackSearchItem(
                 id: String($0.id ?? 0),
-                trackerId: self.id,
-                title: $0.title?.english ?? $0.title?.romaji,
+                title: $0.title?.userPreferred,
                 coverUrl: $0.coverImage?.medium,
                 description: $0.description,
                 status: getPublishingStatus(statusString: $0.status ?? ""),
@@ -184,6 +190,10 @@ class AniListTracker: OAuthTracker {
                 tracked: $0.mediaListEntry != nil
             )
         }
+    }
+
+    func getAuthenticationUrl() async -> URL? {
+        await api.oauth.getAuthenticationUrl(responseType: "token")
     }
 
     func handleAuthenticationCallback(url: URL) async {
@@ -204,8 +214,6 @@ class AniListTracker: OAuthTracker {
 
         token = oauth.accessToken
         UserDefaults.standard.set(try? JSONEncoder().encode(oauth), forKey: "Token.\(id).oauth")
-
-        await getScoreType()
     }
 }
 

@@ -5,24 +5,24 @@
 //  Created by Skitty on 6/16/22.
 //
 
-import Foundation
+import AidokuRunner
 import AuthenticationServices
+import Foundation
 
 /// MyAnimeList tracker for Aidoku.
-class MyAnimeListTracker: OAuthTracker {
+final class MyAnimeListTracker: OAuthTracker {
     let id = "myanimelist"
     let name = "MyAnimeList"
     let icon = PlatformImage(named: "mal")
 
-    let supportedStatuses = TrackStatus.defaultStatuses
-    let scoreType: TrackScoreType = .tenPoint
-
     let api = MyAnimeListApi()
 
     let callbackHost = "myanimelist-auth"
-    lazy var authenticationUrl = api.oauth.getAuthenticationUrl() ?? ""
-
     var oauthClient: OAuthClient { api.oauth }
+
+    func getTrackerInfo() -> TrackerInfo {
+        .init(supportedStatuses: TrackStatus.defaultStatuses, scoreType: .tenPoint)
+    }
 
     func register(trackId: String, highestChapterRead: Float?, earliestReadDate: Date?) async throws -> String? {
         guard let id = Int(trackId) else {
@@ -83,8 +83,8 @@ class MyAnimeListTracker: OAuthTracker {
         URL(string: "https://myanimelist.net/manga/\(trackId)")
     }
 
-    func search(for manga: Manga, includeNsfw: Bool) async -> [TrackSearchItem] {
-        await search(title: manga.title ?? "", includeNsfw: includeNsfw)
+    func search(for manga: AidokuRunner.Manga, includeNsfw: Bool) async -> [TrackSearchItem] {
+        await search(title: manga.title, includeNsfw: includeNsfw)
     }
 
     func search(title: String, includeNsfw: Bool) async -> [TrackSearchItem] {
@@ -92,7 +92,6 @@ class MyAnimeListTracker: OAuthTracker {
             let details = await self.api.getMangaDetails(id: node.node.id)
             return TrackSearchItem(
                 id: String(node.node.id),
-                trackerId: self.id,
                 title: details?.title,
                 coverUrl: details?.mainPicture?.large,
                 description: details?.synopsis,

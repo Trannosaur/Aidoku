@@ -5,11 +5,12 @@
 //  Created by Skitty on 7/29/25.
 //
 
+import AidokuRunner
 import SwiftUI
 
 struct TrackerSearchView: View {
     let tracker: Tracker
-    let manga: Manga
+    let manga: AidokuRunner.Manga
 
     @State private var query: String
     @State private var includeNsfw: Bool
@@ -23,11 +24,11 @@ struct TrackerSearchView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    init(tracker: Tracker, manga: Manga) {
+    init(tracker: Tracker, manga: AidokuRunner.Manga) {
         self.tracker = tracker
         self.manga = manga
-        self._query = State(initialValue: manga.title ?? "")
-        self._includeNsfw = State(initialValue: manga.nsfw != .safe)
+        self._query = State(initialValue: manga.title)
+        self._includeNsfw = State(initialValue: manga.contentRating != .safe)
     }
 
     var body: some View {
@@ -38,7 +39,7 @@ struct TrackerSearchView: View {
                 } else {
                     List {
                         ForEach(results, id: \.id) { item in
-                            let view = Button {
+                            Button {
                                 if selectedItem == item.id {
                                     selectedItem = nil
                                 } else {
@@ -47,37 +48,26 @@ struct TrackerSearchView: View {
                             } label: {
                                 TrackerSearchItemCell(item: item, selected: selectedItem == item.id)
                             }
-                            if #available(iOS 16.0, *) {
-                                view
-                                    .alignmentGuide(.listRowSeparatorLeading) { d in
-                                        d[.leading]
-                                    }
-                            } else {
-                                view
-                            }
+                            .offsetListSeparator()
                         }
                     }
                     .listStyle(.plain)
-                    .scrollDismissesKeyboardInteractively()
+                    .scrollDismissesKeyboardImmediately()
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
+                ToolbarItem(placement: .cancellationAction) {
+                    CloseButton {
                         if searchBarFocused == true {
                             searchBarFocused = false
                         } else {
                             dismiss()
                         }
-                    } label: {
-                        Text(NSLocalizedString("CANCEL"))
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
+                ToolbarItem(placement: .confirmationAction) {
+                    DoneButton {
                         track()
-                    } label: {
-                        Text(NSLocalizedString("TRACK"))
                     }
                     .disabled(selectedItem == nil)
                 }

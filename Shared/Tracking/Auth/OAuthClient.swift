@@ -8,8 +8,11 @@
 import Foundation
 import CryptoKit
 
-class OAuthClient {
+#if canImport(UIKit)
+import UIKit
+#endif
 
+actor OAuthClient {
     let id: String
     let clientId: String
     let clientSecret: String?
@@ -39,24 +42,26 @@ class OAuthClient {
         self.challengeMethod = challengeMethod
     }
 
-    func getAuthenticationUrl(responseType: String = "code") -> String? {
+    func getAuthenticationUrl(responseType: String = "code", redirectUri: String? = nil) -> URL? {
         guard let url = URL(string: baseUrl + "/authorize") else { return nil }
         var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
         var queryItems = [
             URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "response_type", value: responseType)
         ]
+        if let redirectUri {
+            queryItems.append(URLQueryItem(name: "redirect_uri", value: redirectUri))
+        }
         if challengeMethod != .none {
             queryItems.append(URLQueryItem(name: "code_challenge", value: generatePkceChallenge(method: challengeMethod)))
         }
         components?.queryItems = queryItems
-        return components?.url?.absoluteString
+        return components?.url
     }
 }
 
 // MARK: - Tokens
 extension OAuthClient {
-
     func getAccessToken(authCode: String) async -> OAuthResponse? {
         guard let url = URL(string: baseUrl + "/token") else { return nil }
         var request = URLRequest(url: url)
@@ -98,7 +103,12 @@ extension OAuthClient {
         UserDefaults.standard.set(try? JSONEncoder().encode(tokens), forKey: "Token.\(id).oauth")
     }
 
-    func authorizedRequest(for url: URL) -> URLRequest {
+    func setTokens(_ response: OAuthResponse?) {
+        tokens = response
+        saveTokens()
+    }
+
+    func authorizedRequest(for url: URL, additionalHeaders: [String: String]? = nil) -> URLRequest {
         if tokens == nil { loadTokens() }
 
         var request = URLRequest(url: url)
@@ -106,13 +116,20 @@ extension OAuthClient {
             "\(tokens?.tokenType ?? "Bearer") \(tokens?.accessToken ?? "")",
             forHTTPHeaderField: "Authorization"
         )
+
+        // Add any additional headers
+        if let additionalHeaders {
+            for (key, value) in additionalHeaders {
+                request.addValue(value, forHTTPHeaderField: key)
+            }
+        }
+
         return request
     }
 }
 
 // MARK: - PKCE
 extension OAuthClient {
-
     func generatePkceVerifier() -> String {
         var octets = [UInt8](repeating: 0, count: 32)
         guard SecRandomCopyBytes(kSecRandomDefault, octets.count, &octets) == errSecSuccess else {
@@ -124,15 +141,15 @@ extension OAuthClient {
 
     func generatePkceChallenge(method: OAuthCodeChallengeMethod) -> String {
         switch method {
-        case .plain:
-            return generatePkceVerifier()
-        case .s256:
-            return generatePkceVerifier()
-               .data(using: .ascii)
-               .map { SHA256.hash(data: $0) }
-               .map { base64($0) } ?? ""
-        case .none:
-            return ""
+            case .plain:
+                return generatePkceVerifier()
+            case .s256:
+                return generatePkceVerifier()
+                   .data(using: .ascii)
+                   .map { SHA256.hash(data: $0) }
+                   .map { base64($0) } ?? ""
+            case .none:
+                return ""
         }
     }
 
@@ -144,5 +161,37 @@ extension OAuthClient {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .trimmingCharacters(in: .whitespaces)
+    }
+}
+
+extension OAuthClient {
+    func checkIfReloginNeeded(trackerName: String) async -> Bool {
+        if tokens == nil {
+            loadTokens()
+        }
+        guard tokens?.refreshToken != nil else {
+            await showReloginAlert(trackerName: trackerName)
+            return true
+        }
+        return false
+    }
+
+    func showReloginAlert(trackerName: String) async {
+        if tokens == nil {
+            loadTokens()
+        }
+        guard var tokens else { return }
+        if !tokens.askedForRefresh {
+            tokens.askedForRefresh = true
+            setTokens(tokens)
+#if !os(macOS)
+            await MainActor.run {
+                (UIApplication.shared.delegate as? AppDelegate)?.presentAlert(
+                    title: String(format: NSLocalizedString("%@_TRACKER_LOGIN_NEEDED"), trackerName),
+                    message: String(format: NSLocalizedString("%@_TRACKER_LOGIN_NEEDED_TEXT"), trackerName)
+                )
+            }
+#endif
+        }
     }
 }

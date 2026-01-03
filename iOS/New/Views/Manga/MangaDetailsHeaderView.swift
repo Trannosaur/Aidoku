@@ -33,6 +33,9 @@ struct MangaDetailsHeaderView: View {
 
     @Binding var descriptionExpanded: Bool
 
+    @Binding var chapterTitleDisplayMode: ChapterTitleDisplayMode
+
+    var hasOtherDownloads: Bool
     var onTrackerButtonPressed: (() -> Void)?
     var onReadButtonPressed: (() -> Void)?
 
@@ -44,6 +47,7 @@ struct MangaDetailsHeaderView: View {
     @State private var longHeldBookmark = false
     @State private var longHeldSafari = false
     @State private var isTracking = false
+    @State private var hasAvailableTrackers = false
 
     static let coverWidth: CGFloat = 114
 
@@ -64,6 +68,8 @@ struct MangaDetailsHeaderView: View {
         langFilter: Binding<String?>,
         scanlatorFilter: Binding<[String]>,
         descriptionExpanded: Binding<Bool>,
+        chapterTitleDisplayMode: Binding<ChapterTitleDisplayMode>,
+        hasOtherDownloads: Bool,
         onTrackerButtonPressed: (() -> Void)? = nil,
         onReadButtonPressed: (() -> Void)? = nil
     ) {
@@ -83,6 +89,8 @@ struct MangaDetailsHeaderView: View {
         self._langFilter = langFilter
         self._scanlatorFilter = scanlatorFilter
         self._descriptionExpanded = descriptionExpanded
+        self._chapterTitleDisplayMode = chapterTitleDisplayMode
+        self.hasOtherDownloads = hasOtherDownloads
         self.onTrackerButtonPressed = onTrackerButtonPressed
         self.onReadButtonPressed = onReadButtonPressed
 
@@ -132,18 +140,21 @@ struct MangaDetailsHeaderView: View {
                             .foregroundStyle(.secondary)
                             .font(.callout)
                             .padding(.bottom, 6)
+                            .textSelection(.enabled)
                             .transition(.opacity)
 
                         if let source, source.supportsAuthorSearch {
                             Button {
                                 // we'll need a better ui in the future for different author selection
                                 guard let author = authors.first else { return }
-                                let view = MangaListView(source: source, title: author) { page in
+
+                                let viewController = MangaListViewController(source: source, title: author)
+                                viewController.getEntries = { page in
                                     try await source.getSearchMangaList(query: nil, page: page, filters: [
                                         .text(id: "author", value: author)
                                     ])
-                                }.environmentObject(path)
-                                path.push(view, title: author)
+                                }
+                                path.push(viewController)
                             } label: {
                                 label
                             }
@@ -187,24 +198,30 @@ struct MangaDetailsHeaderView: View {
             .foregroundStyle(.white)
             .background(Color.accentColor)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .padding(.bottom, 10)
+            .padding(.bottom, 20)
             .padding(.horizontal, 20)
             .allowsHitTesting(!readButtonDisabled)
 
-            ChapterListHeaderView(
-                allChapters: manga.chapters,
-                filteredChapters: manga.chapters != nil ? chapters : (initialDataLoaded ? [] : nil),
-                sortOption: $chapterSortOption,
-                sortAscending: $chapterSortAscending,
-                filters: $filters,
-                langFilter: $langFilter,
-                scanlatorFilter: $scanlatorFilter
-            )
-            .padding(.horizontal, 20)
+            // hide the chapter list header if there are no chapters and the other downloads header is shown
+            if !(manga.chapters ?? chapters).isEmpty || !hasOtherDownloads {
+                ChapterListHeaderView(
+                    allChapters: manga.chapters,
+                    filteredChapters: manga.chapters != nil ? chapters : (initialDataLoaded ? [] : nil),
+                    sortOption: $chapterSortOption,
+                    sortAscending: $chapterSortAscending,
+                    filters: $filters,
+                    langFilter: $langFilter,
+                    scanlatorFilter: $scanlatorFilter,
+                    displayMode: $chapterTitleDisplayMode,
+                    mangaUniqueKey: manga.uniqueKey
+                )
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
+            }
 
             // separator
             if !chapters.isEmpty {
-                Divider()
+                ListDivider()
             }
         }
         .animation(.default, value: animationTrigger)
@@ -233,14 +250,15 @@ struct MangaDetailsHeaderView: View {
                 mangaId: manga.key
             )
         }
-        .onAppear {
+        .task {
             updateReadButtonText()
+            hasAvailableTrackers = await TrackerManager.shared.hasAvailableTrackers(sourceKey: manga.sourceKey, mangaKey: manga.key)
         }
     }
 
     @ViewBuilder
     var labelsView: some View {
-        if manga.status != .unknown || (manga.contentRating != .unknown && manga.contentRating != .safe) {
+        if manga.status != .unknown || (manga.contentRating != .unknown && manga.contentRating != .safe) || (bookmarked && source != nil) {
             HStack(spacing: 6) {
                 if manga.status != .unknown {
                     LabelView(text: manga.status.title)
@@ -301,7 +319,7 @@ struct MangaDetailsHeaderView: View {
                     }
             )
 
-            if TrackerManager.shared.hasAvailableTrackers(sourceKey: manga.sourceKey, mangaKey: manga.key) {
+            if hasAvailableTrackers {
                 Button {
                     onTrackerButtonPressed?()
                 } label: {
@@ -349,12 +367,13 @@ struct MangaDetailsHeaderView: View {
                         let label = TagView(text: tag)
                         if let source, let filter = source.matchingGenreFilter(for: tag) {
                             Button {
-                                let view = MangaListView(source: source, title: tag) { page in
+                                let viewController = MangaListViewController(source: source, title: tag)
+                                viewController.getEntries = { page in
                                     try await source.getSearchMangaList(query: nil, page: page, filters: [
                                         filter
                                     ])
-                                }.environmentObject(path)
-                                path.push(view, title: tag)
+                                }
+                                path.push(viewController)
                             } label: {
                                 label
                             }
@@ -431,11 +450,28 @@ struct MangaDetailsHeaderView: View {
                 } else {
                     title = NSLocalizedString("CONTINUE_READING", comment: "")
                 }
-                if let volumeNum = chapter.volumeNumber {
-                    title += " " + String(format: NSLocalizedString("VOL_X", comment: ""), volumeNum)
-                }
-                if let chapterNum = chapter.chapterNumber {
-                    title += " " + String(format: NSLocalizedString("CH_X", comment: ""), chapterNum)
+                switch chapterTitleDisplayMode {
+                    case .volume:
+                        if let volumeNum = chapter.volumeNumber {
+                            title += " " + String(format: NSLocalizedString("VOL_X"), volumeNum)
+                        } else if let chapterNum = chapter.chapterNumber {
+                            // Force display as volume if no volume number
+                            title += " " + String(format: NSLocalizedString("VOL_X"), chapterNum)
+                        }
+                    case .chapter:
+                        if let chapterNum = chapter.chapterNumber {
+                            title += " " + String(format: NSLocalizedString("CH_X"), chapterNum)
+                        } else if let volumeNum = chapter.volumeNumber {
+                            // Force display as chapter if no chapter number
+                            title += " " + String(format: NSLocalizedString("CH_X"), volumeNum)
+                        }
+                    case .default:
+                        if let volumeNum = chapter.volumeNumber {
+                            title += " " + String(format: NSLocalizedString("VOL_X"), volumeNum)
+                        }
+                        if let chapterNum = chapter.chapterNumber {
+                            title += " " + String(format: NSLocalizedString("CH_X"), chapterNum)
+                        }
                 }
             } else {
                 title = NSLocalizedString("NO_CHAPTERS_AVAILABLE", comment: "")
@@ -472,6 +508,7 @@ private struct TagView: View {
             .font(.footnote)
             .padding(.horizontal, 12)
             .padding(.vertical, 5)
+            .textSelection(.enabled)
             .background(Color(UIColor.tertiarySystemFill))
             .clipShape(RoundedRectangle(cornerRadius: 100))
     }
@@ -509,6 +546,7 @@ private struct MangaActionButtonStyle: ButtonStyle {
     @Previewable @State var filters: [ChapterFilterOption] = []
     @Previewable @State var langFilter: String?
     @Previewable @State var scanlatorFilter: [String] = []
+    @Previewable @State var chapterTitleDisplayMode = ChapterTitleDisplayMode.default
 
     MangaDetailsHeaderView(
         source: AidokuRunner.Source.demo(),
@@ -533,5 +571,7 @@ private struct MangaActionButtonStyle: ButtonStyle {
         langFilter: $langFilter,
         scanlatorFilter: $scanlatorFilter,
         descriptionExpanded: Binding.constant(false),
+        chapterTitleDisplayMode: $chapterTitleDisplayMode,
+        hasOtherDownloads: false,
     )
 }

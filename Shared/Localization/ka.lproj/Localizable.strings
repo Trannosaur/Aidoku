@@ -22,7 +22,6 @@
 "REMOVE_DOWNLOADS" = "ჩატვირთულების წაშლა";
 "REMOVE_DOWNLOADS_CONFIRM" = "გსურთ ყველა არჩეული ჩამოტვირთვის წაშლა?";
 "LIBRARY_SEARCH" = "იპოვეთ ბიბლიოთეკაში";
-"LIBRARY_ADD_FROM_BROWSE" = "დაამატეთ მანგა დათვალიერების ჩანართში";
 "SORT_BY" = "დალაგება";
 "FILTER_BY" = "გაფილტვრა";
 "TITLE" = "სათაური";
@@ -36,13 +35,11 @@
 "NONE" = "არცერთი";
 "CATEGORIES" = "კატეგორიები";
 "EDIT_CATEGORIES" = "კატეგორიების რედაქტირება";
-"CATEGORY_TITLE" = "კატეგორიის სათაური";
 "DEFAULT_CATEGORY" = "ნაგულისხმევი კატეგორია";
 
 // Browse
 "BROWSE" = "დათვალიერება";
 "BROWSE_NO_SOURCES" = "წყაროები არ არსებობს";
-"BROWSE_NO_SOURCES_TEXT" = "დააკონფიგურირეთ თქვენი წყაროების სია ან გახსენით a\nწყარო Aidoku-ში დასაწყებად";
 "ADDING_SOURCES_GUIDE_BUTTON" = "წყაროების დამატების ინსტრუქცია";
 
 // Source
@@ -88,13 +85,10 @@
 "INCOGNITO_MODE" = "ინკოგნიტო რეჟიმი";
 "APPEARANCE_LIGHT" = "ნათელი";
 "APPEARANCE_DARK" = "მუქი";
-"MANGA_PER_ROW" = "მანგა რიგში";
+"MANGA_PER_ROW" = "მანგა თითოეულ რიგში";
 "PORTRAIT" = "პორტრეტი";
 "UNREAD_CHAPTER_BADGES" = "წაუკითხავი თავების ნიშნები";
-"PIN_MANGA" = "მანგას დაპინვა";
-"PIN_MANGA_TYPE" = "პინის ტიპი";
-"PIN_MANGA_UNREAD" = "წაუკითხავი";
-"PIN_MANGA_UPDATED" = "განახლებული";
+"PIN_UNREAD" = "წაუკითხავი";
 "LIBRARY_UPDATING" = "ბიბლიოთეკის განახლება";
 "UPDATE_INTERVAL" = "განახლების ინტერვალი";
 "EVERY_12_HOURS" = "ყოველ 12 საათში";
@@ -102,7 +96,6 @@
 "THAT_HAVENT_BEEN_READ" = "ეს არ არის წაკითხული";
 "SOURCE_LISTS" = "წყაროების სიები";
 "SOURCE_LIST_ADDED_TEXT" = "ახლა შეგიძლიათ გარე წყაროების დათვალიერება დათვალიერების ჩანართში.";
-"SHOW_NSFW_SOURCES" = "NSFW წყაროების ჩვენება";
 "SOURCE_LIST_URL" = "წყაროს სიის URL";
 "SOURCE_LIST_ADD" = "დაამატეთ წყაროების სია";
 "SOURCE_LIST_ADD_TEXT" = "შეიყვანეთ წყაროს სიის URL";

@@ -55,9 +55,9 @@ public class MangaObject: NSManagedObject {
         scanlatorFilter = manga.scanlatorFilter
     }
 
-    func load(from manga: AidokuRunner.Manga, sourceId: String) {
+    func load(from manga: AidokuRunner.Manga, sourceId: String? = nil) {
         id = manga.key
-        self.sourceId = sourceId
+        self.sourceId = sourceId ?? manga.sourceKey
         title = manga.title
         author = manga.authors.flatMap { $0.isEmpty ? nil : $0.joined(separator: ", ") }
         artist = manga.artists.flatMap { $0.isEmpty ? nil : $0.joined(separator: ", ") }
@@ -98,8 +98,10 @@ public class MangaObject: NSManagedObject {
             chapterFlags: Int(chapterFlags),
             langFilter: langFilter,
             scanlatorFilter: scanlatorFilter,
-            lastUpdated: libraryObject?.lastUpdated,
             lastOpened: libraryObject?.lastOpened,
+            lastUpdated: libraryObject?.lastUpdated,
+            lastUpdatedChapters: libraryObject?.lastUpdatedChapters,
+            lastChapter: libraryObject?.lastChapter,
             lastRead: libraryObject?.lastRead,
             dateAdded: libraryObject?.dateAdded
         )
@@ -124,8 +126,8 @@ public class MangaObject: NSManagedObject {
             description: desc,
             url: url.flatMap { URL(string: $0) },
             tags: tags,
-            status: MangaStatus(rawValue: UInt8(status)) ?? .unknown,
-            contentRating: AidokuRunner.MangaContentRating(rawValue: UInt8(nsfw + 1)) ?? .unknown,
+            status: AidokuRunner.PublishingStatus(rawValue: UInt8(status)) ?? .unknown,
+            contentRating: AidokuRunner.ContentRating(rawValue: UInt8(nsfw + 1)) ?? .unknown,
             viewer: viewer,
             updateStrategy: neverUpdate ? .never : .always,
             nextUpdateTime: nextUpdateTime.flatMap { Int($0.timeIntervalSince1970) },

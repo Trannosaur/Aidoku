@@ -73,6 +73,14 @@ extension LocalFileImportView {
         init(fileInfo: ImportFileInfo? = nil, fullyPresented: Binding<Bool>) {
             self._fileInfo = State(initialValue: fileInfo)
             self._fullyPresented = fullyPresented
+
+            let initialVolume = fileInfo?.comicInfo?.volume.flatMap { Float($0) }
+                ?? fileInfo.flatMap { LocalFileNameParser.getMangaVolumeNumber(from: $0.name) }
+            let initialChapter = fileInfo?.comicInfo?.number.flatMap { Float($0) }
+                ?? fileInfo.flatMap { LocalFileNameParser.getMangaChapterNumber(from: $0.name) }
+                ?? 1
+            self._volume = State(initialValue: initialVolume)
+            self._chapter = State(initialValue: initialChapter)
         }
     }
 }
@@ -91,20 +99,14 @@ extension LocalFileImportView.ContentView {
             }
             .padding(.horizontal)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if fullyPresented {
-                        Button(NSLocalizedString("CANCEL")) {
-                            dismiss()
-                        }
+                ToolbarItem(placement: .cancellationAction) {
+                    CloseButton {
+                        dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    if !fullyPresented {
-                        CloseButton {
-                            dismiss()
-                        }
-                    } else {
+                    if fullyPresented {
                         Button {
                             if selectedMangaId.isEmpty {
                                 showSeriesConfigurePage = true
@@ -391,10 +393,25 @@ extension LocalFileImportView.ContentView {
     func loadFileInfoFields() {
         guard let fileInfo else { return }
         name = fileInfo.name.removingExtension()
-        seriesName = name
+        seriesName = fileInfo.comicInfo?.series ?? LocalFileNameParser.parseMangaSeries(from: fileInfo.name)
+        if seriesName.isEmpty {
+            seriesName = name
+        }
+        seriesDescription = fileInfo.comicInfo?.summary ?? ""
         coverImage = fileInfo.previewImages.first
+        volume = fileInfo.comicInfo?.volume.flatMap { Float($0) }
+            ?? LocalFileNameParser.getMangaVolumeNumber(from: fileInfo.name)
+        chapter = fileInfo.comicInfo?.number.flatMap { Float($0) }
+            ?? LocalFileNameParser.getMangaChapterNumber(from: fileInfo.name)
+            ?? 1
         Task {
-            nameValid = !(await LocalFileDataManager.shared.hasSeries(name: seriesName))
+            let hasSeries = await LocalFileDataManager.shared.hasSeries(id: seriesName.percentEncoded())
+            nameEmpty = selectedMangaId.isEmpty ? seriesName.isEmpty : false
+            nameValid = !hasSeries
+            if hasSeries {
+                selectedMangaId = seriesName
+                selectedMangaTitle = seriesName
+            }
         }
     }
 
@@ -421,7 +438,7 @@ extension LocalFileImportView.ContentView {
         if selectedMangaId.isEmpty {
             nameEmpty = seriesName.isEmpty
             Task {
-                nameValid = !(await LocalFileDataManager.shared.hasSeries(name: seriesName))
+                nameValid = !(await LocalFileDataManager.shared.hasSeries(id: seriesName.percentEncoded()))
             }
         } else {
             nameEmpty = false

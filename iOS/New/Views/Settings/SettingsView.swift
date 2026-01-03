@@ -57,6 +57,7 @@ extension SettingsView {
                                                 HStack(spacing: 2) {
                                                     ForEach(Array(zip(setting.paths.indices, setting.paths)), id: \.0.self) { index, title in
                                                         Text(title)
+                                                            .lineLimit(1)
                                                         if index < setting.paths.count - 1 {
                                                             Image(systemName: "arrow.forward")
                                                         }
@@ -112,24 +113,10 @@ extension SettingsView {
                 }
             }
         }
+        .listStyle(.insetGrouped)
         .overlay {
             if let searchResult, searchResult.sections.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
-
-                    VStack(spacing: 4) {
-                        Text(String(format: NSLocalizedString("NO_RESULTS_FOR_%@"), searchText))
-                            .font(.title2.weight(.bold))
-                            .multilineTextAlignment(.center)
-                        Text(NSLocalizedString("NO_RESULTS_TEXT"))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                }
-                .frame(maxWidth: .infinity)
+                UnavailableView.search(text: searchText)
             }
         }
         .searchable(text: $searchText)
@@ -164,13 +151,18 @@ extension SettingsView {
                 }
 
             case "Logs.logServer":
-                LogManager.logger.streamUrl = UserDefaults.standard.string(forKey: "Logs.logServer").flatMap(URL.init)
+                Task {
+                    let url = UserDefaults.standard.string(forKey: "Logs.logServer").flatMap(URL.init)
+                    await LogManager.logger.store.setStreamUrl(url)
+                }
             case "Logs.export":
-                let url = LogManager.export()
-                let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-                guard let sourceView = path.rootViewController?.view else { return }
-                vc.popoverPresentationController?.sourceView = sourceView
-                path.present(vc)
+                Task {
+                    let url = await LogManager.export()
+                    let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+                    guard let sourceView = path.rootViewController?.view else { return }
+                    vc.popoverPresentationController?.sourceView = sourceView
+                    path.present(vc)
+                }
             case "Logs.display":
                 path.push(LogViewController())
 
@@ -238,13 +230,13 @@ extension SettingsView {
                 ) {
                     Task {
                         (UIApplication.shared.delegate as? AppDelegate)?.showLoadingIndicator(style: .progress)
-                        await CoreDataManager.shared.migrateChapterHistory(progress: { progress in
+                        await CoreDataManager.shared.migrateChapterHistory { progress in
                             Task { @MainActor in
                                 (UIApplication.shared.delegate as? AppDelegate)?.indicatorProgress = progress
                             }
-                        })
+                        }
                         NotificationCenter.default.post(name: Notification.Name("updateLibrary"), object: nil)
-                        (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
+                        await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
                     }
                 }
             case "Advanced.resetSettings":
@@ -265,10 +257,10 @@ extension SettingsView {
                     Task {
                         await CoreDataManager.shared.container.performBackgroundTask { context in
                             CoreDataManager.shared.clearLibrary(context: context)
+                            CoreDataManager.shared.clearManga(context: context)
                             CoreDataManager.shared.clearHistory(context: context)
                             CoreDataManager.shared.clearChapters(context: context)
                             CoreDataManager.shared.clearCategories(context: context)
-                            CoreDataManager.shared.clearTracks(context: context)
                             CoreDataManager.shared.clearTracks(context: context)
                             try? context.save()
                         }
@@ -278,7 +270,7 @@ extension SettingsView {
                         NotificationCenter.default.post(name: Notification.Name("updateHistory"), object: nil)
                         NotificationCenter.default.post(name: Notification.Name("updateTrackers"), object: nil)
                         NotificationCenter.default.post(name: Notification.Name("updateCategories"), object: nil)
-                        (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
+                        await (UIApplication.shared.delegate as? AppDelegate)?.hideLoadingIndicator()
                     }
                 }
             default:
@@ -298,12 +290,14 @@ extension SettingsView {
             SettingsTrackingView()
         } else if key == "About" {
             SettingsAboutView()
+        } else if key == "Insights" {
+            InsightsView()
         } else if key == "SourceLists" {
             SourceListsView()
         } else if key == "Backups" {
             BackupsView().environmentObject(path)
-        } else if key == "DownloadManager" {
-            DownloadManagerView().environmentObject(path)
+        } else if key == "Downloads" {
+            DownloadsView().environmentObject(path)
         }
     }
 
@@ -335,45 +329,6 @@ extension SettingsView {
                 return setting
             }()
             SettingView(setting: newSetting)
-        } else {
-            VStack(spacing: 10) {
-                let (icon, color) = switch setting.key {
-                    case "iCloud": ("icloud.fill", Color.blue)
-                    default: ("questionmark", Color.gray)
-                }
-                Image(systemName: icon)
-                    .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(.white)
-                    .aspectRatio(contentMode: .fit)
-                    .padding(12)
-                    .frame(width: 60, height: 60)
-                    .background(color)
-                    .clipShape(RoundedRectangle(cornerRadius: 15))
-
-                Text(setting.title)
-                    .font(.title2.weight(.bold))
-
-                let subtitle: String? = {
-                    switch setting.key {
-                        case "iCloud":
-                            NSLocalizedString(
-                                UserDefaults.standard.bool(forKey: "isSideloaded")
-                                    ? "ICLOUD_SYNC_TEXT_SIDELOADED"
-                                    : "ICLOUD_SYNC_TEXT_EXPERIMENTAL"
-                            )
-                        default: nil
-                    }
-                }()
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.system(size: 15))
-                        .lineSpacing(2)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 }
@@ -501,27 +456,19 @@ extension SettingsView {
             findTargetSetting(title: targetSettingTitle, in: targetPage.items)
         }
 
-        let content = ScrollViewReader { proxy in
-            List {
-                ForEach(targetPage.items.indices, id: \.self) { offset in
-                    let setting = targetPage.items[offset]
-                    SettingView(setting: setting, onChange: onSettingChange)
-                        .settingPageContent(pageContentHandler)
-                        .settingCustomContent(customContentHandler)
-                        .tag(setting.key.isEmpty ? UUID().uuidString : setting.key)
-                }
-            }
-            .onAppear {
-                if let targetSetting {
-                    proxy.scrollTo(targetSetting.key, anchor: .center)
-                }
-            }
-        }
-        .navigationTitle(targetPageSetting.title)
-        .navigationBarTitleDisplayMode((targetPage.inlineTitle ?? false) ? .inline : .automatic)
+        let content = SettingPageDestination(
+            setting: targetPageSetting,
+            onChange: onSettingChange,
+            value: targetPage,
+            scrollTo: targetSetting
+        )
+        .settingPageContent(pageContentHandler)
+        .settingCustomContent(customContentHandler)
 
         let controller = UIHostingController(rootView: content)
-        controller.title = targetPageSetting.title
+        let hasHeaderView = targetPage.icon != nil && targetPage.info != nil
+        controller.title = hasHeaderView ? nil : targetPageSetting.title
+        controller.navigationItem.largeTitleDisplayMode = .never
         path.push(controller)
     }
 }

@@ -16,7 +16,6 @@
 "LIBRARY" = "라이브러리";
 "LIBRARY_SEARCH" = "라이브러리에서 찾기";
 "LIBRARY_EMPTY" = "빈 라이브러리";
-"LIBRARY_ADD_FROM_BROWSE" = "찾아보기 탭에서 만화 추가";
 "ADD_TO_LIBRARY" = "라이브러리에 추가";
 "MANGA_INFO" = "만화 정보";
 "LAST_OPENED" = "최근 확인순";
@@ -44,14 +43,12 @@
 "SORT_BY" = "정렬";
 "REMOVE_FROM_LIBRARY" = "라이브러리에서 제거";
 "LATEST_CHAPTER" = "최신 챕터순";
-"CATEGORY_TITLE" = "카테고리 제목";
 "CATEGORY_ADD" = "카테고리 추가";
 "CATEGORY_ADD_TEXT" = "새로운 카테고리의 제목을 적어주세요.";
 "CATEGORIES" = "카테고리";
 "EDIT_CATEGORIES" = "카테고리 수정";
 "ALWAYS_ASK" = "항상 요청";
 "BROWSE_NO_SOURCES" = "출처 없음";
-"BROWSE_NO_SOURCES_TEXT" = "시작하려면 소스 목록을 구성하거나 \nAidoku에서 소스를 열기";
 "UPDATES" = "업데이트";
 "BUTTON_UPDATE" = "업데이트";
 "BUTTON_GET" = "가져오기";
@@ -123,8 +120,6 @@
 "READER" = "리더";
 "OPEN_READER_VIEW" = "리더 보기 열기";
 "UNREAD_CHAPTER_BADGES" = "읽지 않은 챕터 배지";
-"PIN_MANGA" = "핀 만화";
-"PIN_MANGA_TYPE" = "핀 유형";
 "SKIP_TITLES" = "제목 건너뛰기";
 "ONLY_UPDATE_ON_WIFI" = "Wi-Fi에서만 업데이트";
 "WITH_COMPLETED_STATUS" = "완료된 상태로";
@@ -206,8 +201,7 @@
 "AUTH_FOR_HISTORY" = "읽은 기록을 보려면 인증하세요.";
 "ABOUT" = "정보";
 "MISSING_SOURCE_TEXT" = "이 만화의 원본 소스가 누락된 것 같습니다. 다시 다운로드하거나 라이브러리에서 이 제목을 제거하세요.";
-"PIN_MANGA_UNREAD" = "읽지 않음";
-"PIN_MANGA_UPDATED" = "업데이트됨";
+"PIN_UNREAD" = "읽지 않음";
 "DAILY" = "매일";
 "EVERY_2_DAYS" = "2일마다";
 "EXCLUDED_CATEGORIES" = "제외된 카테고리";
@@ -223,7 +217,6 @@
 "WITH_UNREAD_CHAPTERS" = "읽지 않은 챕터 포함";
 "THAT_HAVENT_BEEN_READ" = "읽지 않은 것";
 "SOURCE_LISTS" = "소스 목록";
-"SHOW_NSFW_SOURCES" = "성인용 소스 표시";
 "SOURCE_LIST_ADD_FAIL_TEXT" = "제공된 소스 목록 URL이 잘못되었거나 이미 추가되었습니다.";
 "CORRUPTED_BACKUP" = "손상된 백업";
 "RENAME_BACKUP" = "백업 이름 바꾸기";
@@ -313,10 +306,8 @@
 "PINNED" = "고정됨";
 "%i_CHAPTERS" = "%i 장";
 "RENAME_CATEGORY_FAIL_INFO" = "범주 이름은 고유해야 합니다.";
-"SYNC_WITH_TRACKER" = "트래커와 동기화";
-"SYNC_WITH_TRACKER_INFO" = "트래커 (%g)에 설정된 최신 장이 최근에 읽은 장보다 높은 것 같습니다. 일치하도록 로컬 기록을 업데이트하겠습니까?";
 "ALL_CHAPTERS_READ" = "모든 장 읽기";
-"TRACKING" = "트래킹";
+"IS_TRACKING" = "트래킹";
 "DEFAULT_READING_MODE" = "기본 읽기 모드";
 "PILLARBOX" = "필라박스";
 "PILLARBOX_AMOUNT" = "필라박스 금액";
@@ -329,10 +320,6 @@
 "PIN" = "고정";
 "UNPIN" = "고정 해제";
 "CROP_BORDERS" = "테두리 자르기";
-"ANILIST_LOGIN_NEEDED" = "AniList 로그인이 필요합니다";
-"MAL_LOGIN_NEEDED_TEXT" = "MyAnimeList 토큰이 만료되었으므로 설정에서 다시 로그인할 때까지 MyAnimeList 추적기 작동이 중지됩니다.";
-"ANILIST_LOGIN_NEEDED_TEXT" = "AniList 토큰이 만료되었으므로 설정에 다시 로그인할 때까지 AniList 추적기가 작동하지 않습니다.";
-"MAL_LOGIN_NEEDED" = "MyAnimeList 로그인이 필요합니다";
 "BACKUP_ERROR" = "백업 복원 오류";
 "BACKUP_ERROR_TEXT" = "복원하는 동안 오류가 발생했습니다. %@. 백업이 올바르지 않을 수 있습니다.";
 "RESUME" = "재생";
@@ -366,7 +353,6 @@
 "BASE_URL" = "기본 URL";
 "SEE_ALL" = "모두 표시";
 "%@_EXPERIMENTAL" = "%@ (실험실 기능)";
-"DOWNLOAD_MANAGER" = "내려받기 관리자";
 "NO_DOWNLOADS" = "내려받은 컨텐츠 없음";
 "NO_DOWNLOADS_TEXT" = "내려받은 콘텐츠가 여기에 나타납니다.";
 "DOWNLOADED_CHAPTERS" = "내려받은 챕터";
@@ -404,9 +390,8 @@
 "NO_AVAILABLE_SOURCES_INFO" = "더 많은 외부 소스를 보려면 필터를 조정하세요.";
 "ALL_SOURCES_INSTALLED" = "모든 소스 설치됨";
 "ALL_SOURCES_INSTALLED_INFO" = "모든 소스가 설치되었습니다.";
-"LOCAL_SOURCE" = "로컬 소스";
-"LOCAL_SOURCE_INFO" = "Aidoku 안에서 직접 독서 라이브러리를 업로드하고 로컬 소스를 관리할 수 있습니다.";
-"LOCAL_SOURCE_SETUP" = "로컬 소스 설정";
+"LOCAL_FILES_INFO" = "Aidoku 안에서 직접 독서 라이브러리를 업로드하고 로컬 소스를 관리할 수 있습니다.";
+"LOCAL_FILES_SETUP" = "로컬 소스 설정";
 "LOCAL_FILES" = "로컬 파일";
 "LOCAL_FILES_TAGLINE" = "로컬 파일에서 읽기";
 "IMPORT" = "가져오기";

@@ -20,8 +20,8 @@ struct AddSourceView: View {
     @State private var searchText = ""
     @State private var showLocalSetup = false
     @State private var showKomgaSetup = false
+    @State private var showKavitaSetup = false
     @State private var showImportFailAlert = false
-    @State private var showLanguageSelectSheet = false
 
     @State private var searchFocused: Bool? = false
 
@@ -40,15 +40,9 @@ struct AddSourceView: View {
             List {
                 if !searching {
                     Section {
-                        Button {
+                        LargeButton {
                             importing = true
                         } label: {
-                            let padding: CGFloat = if #available(iOS 26.0, *) {
-                                // ios 26 uses larger list cells
-                                16
-                            } else {
-                                12
-                            }
                             HStack {
                                 if importing {
                                     ProgressView()
@@ -58,23 +52,7 @@ struct AddSourceView: View {
                                     Text(NSLocalizedString("IMPORT_SOURCE"))
                                 }
                             }
-                            .padding(padding)
-                            .frame(maxWidth: .infinity)
-                            .ignoresSafeArea()
                         }
-                        .background(
-                            Color(uiColor: .init(dynamicProvider: { collection in
-                                if collection.userInterfaceStyle == .dark {
-                                    .init(red: 0.20, green: 0.12, blue: 0.15, alpha: 1)
-                                } else {
-                                    .init(red: 0.95, green: 0.87, blue: 0.91, alpha: 1)
-                                }
-                            }))
-                            .opacity(0.8)
-                        )
-                        .padding(0)
-                        .listRowInsets(.zero)
-                        .listRowSpacing(0)
                     }
 
                     builtInSources
@@ -144,10 +122,12 @@ struct AddSourceView: View {
                     }
                 }
             }
+            .contentMarginsPlease(.top, 4)
             .customSearchable(
                 text: $searchText,
                 enabled: $searching,
                 focused: $searchFocused,
+                hidesNavigationBarDuringPresentation: false,
                 hidesSearchBarWhenScrolling: false,
                 onCancel: {
                     // task delays slightly to prevent sheet from closing
@@ -169,7 +149,7 @@ struct AddSourceView: View {
                             return
                         }
                         Task {
-                            let result = try? await SourceManager.shared.importSource(from: url)
+                            let result = await SourceManager.shared.importSource(from: url)
                             if result == nil {
                                 showImportFailAlert = true
                             } else {
@@ -185,37 +165,29 @@ struct AddSourceView: View {
             } message: {
                 Text(NSLocalizedString("SOURCE_IMPORT_FAIL_TEXT"))
             }
-            .sheet(isPresented: $showLanguageSelectSheet) {
-                LanguageSelectView()
-                    .ignoresSafeArea()
-            }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if !allExternalSources.isEmpty {
-                        Button {
-                            showLanguageSelectSheet = true
-                        } label: {
-                            Image(systemName: "globe.americas.fill")
-                        }
+                ToolbarItem(placement: .cancellationAction) {
+                    CloseButton {
+                        dismiss()
                     }
                 }
-
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text(NSLocalizedString("DONE")).bold()
+                    if !allExternalSources.isEmpty {
+                        AddSourceFilterMenu()
                     }
                 }
             }
             .navigationTitle(NSLocalizedString("ADD_SOURCE"))
-            .onReceive(NotificationCenter.default.publisher(for: .browseLanguages)) { _ in
-                // re-filter external sources when selected languages change
+            .navigationBarTitleDisplayMode(.inline)
+            .onReceive(NotificationCenter.default.publisher(for: .filterExternalSources)) { _ in
                 let result = filterExternalSources()
-                externalSources = result.0
-                allSourcesInstalled = result.allSourcesInstalled
+                withAnimation {
+                    externalSources = result.0
+                    allSourcesInstalled = result.allSourcesInstalled
+                }
             }
         }
+        .interactiveDismissDisabled(searching)
     }
 
     var builtInSources: some View {
@@ -286,22 +258,21 @@ struct AddSourceView: View {
             )
             .background(NavigationLink("", destination: KomgaSetupView(), isActive: $showKomgaSetup).hidden())
 
-            // todo: kavita support
-//            ExternalSourceTableCell(
-//                source: .init(
-//                    sourceId: "kavita",
-//                    name: NSLocalizedString("KAVITA"),
-//                    languages: ["multi"],
-//                    version: 1,
-//                    contentRating: .safe
-//                ),
-//                subtitle: "Self-hosted digital library",
-//                onGet: {
-//                    showKavitaSetup = true
-//                    return true
-//                }
-//            )
-//            .background(NavigationLink("", destination: KavitaSetupView(), isActive: $showKavitaSetup).hidden())
+            ExternalSourceTableCell(
+                source: .init(
+                    sourceId: "kavita",
+                    name: NSLocalizedString("KAVITA"),
+                    languages: ["multi"],
+                    version: 1,
+                    contentRating: .safe
+                ),
+                subtitle: NSLocalizedString("KAVITA_TAGLINE"),
+                onGet: {
+                    showKavitaSetup = true
+                    return true
+                }
+            )
+            .background(NavigationLink("", destination: KavitaSetupView(), isActive: $showKavitaSetup).hidden())
         }
     }
 
@@ -329,7 +300,8 @@ struct AddSourceView: View {
         else { return ([], true) }
         let appVersion = SemanticVersion(appVersionString)
         let selectedLanguages = UserDefaults.standard.stringArray(forKey: "Browse.languages") ?? []
-        let showNsfw = UserDefaults.standard.bool(forKey: "Browse.showNsfwSources")
+        let contentRatings = (UserDefaults.standard.stringArray(forKey: "Browse.contentRatings") ?? [])
+            .compactMap { SourceContentRating(stringValue: $0) }
 
         var allSourcesInstalled = true
 
@@ -355,9 +327,9 @@ struct AddSourceView: View {
                         return nil
                     }
                 }
-                // hide nsfw sources
+                // hide unselected content ratings
                 let contentRating = info.resolvedContentRating
-                if !showNsfw && contentRating == .primarilyNsfw {
+                if !contentRatings.contains(where: { $0 == contentRating }) {
                     return nil
                 }
                 // hide unselected languages
@@ -376,15 +348,5 @@ struct AddSourceView: View {
                 return lhs < rhs
             }
         return (result, allSourcesInstalled)
-    }
-}
-
-private struct LanguageSelectView: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UINavigationController {
-        UINavigationController(rootViewController: LanguageSelectViewController())
-    }
-
-    func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {
-        // nothing
     }
 }

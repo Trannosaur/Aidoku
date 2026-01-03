@@ -38,8 +38,15 @@ struct HomeGridView: View {
     }
 
     static private func getColumns() -> [GridItem] {
+        let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+        let orientation =
+            if #available(iOS 16.0, *) {
+                scene?.effectiveGeometry.interfaceOrientation
+            } else {
+                scene?.interfaceOrientation
+            }
         let itemsPerRow = UserDefaults.standard.integer(
-            forKey: UIDevice.current.orientation.isLandscape
+            forKey: orientation?.isLandscape ?? false
                 ? "General.landscapeRows"
                 : "General.portraitRows"
         )
@@ -63,10 +70,8 @@ struct HomeGridView: View {
         .onChange(of: entries) { _ in
             loadingMore = false
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
-            Task {
-                columns = Self.getColumns()
-            }
+        .onReceive(NotificationCenter.default.publisher(for: .orientationDidChange)) { _ in
+            columns = Self.getColumns()
         }
         .onReceive(NotificationCenter.default.publisher(for: .portraitRowsSetting)) { _ in
             columns = Self.getColumns()

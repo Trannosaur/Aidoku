@@ -14,15 +14,24 @@ struct ChapterTableCell: View {
     let chapter: AidokuRunner.Chapter
     let read: Bool
     let page: Int?
-    let downloaded: Bool
+    let downloadStatus: DownloadStatus
     var downloadProgress: Float?
+    let displayMode: ChapterTitleDisplayMode
+
+    var downloaded: Bool {
+        downloadStatus == .finished
+    }
 
     var locked: Bool {
         chapter.locked && !downloaded
     }
 
+    var progress: Float? {
+        downloadProgress ?? (downloadStatus == .queued || downloadStatus == .downloading ? 0 : nil)
+    }
+
     var body: some View {
-        HStack {
+        let view = HStack {
             if let thumbnail = chapter.thumbnail {
                 MangaCoverView(
                     source: source,
@@ -33,7 +42,8 @@ struct ChapterTableCell: View {
             }
 
             VStack(alignment: .leading, spacing: 8 / 3) {
-                Text(chapter.formattedTitle())
+                let title = chapter.formattedTitle(forceMode: displayMode)
+                Text(title)
                     .foregroundStyle(locked || read ? .secondary : .primary)
                     .font(.system(size: 16))
                     .lineLimit(1)
@@ -49,8 +59,8 @@ struct ChapterTableCell: View {
                 Image(systemName: "arrow.down.circle.fill")
                     .imageScale(.small)
                     .foregroundStyle(.tertiary)
-            } else if let downloadProgress {
-                DownloadProgressView(progress: CGFloat(downloadProgress))
+            } else if let progress {
+                DownloadProgressView(progress: progress)
                     .frame(width: 13, height: 13)
             } else if locked {
                 Image(systemName: "lock.fill")
@@ -62,11 +72,18 @@ struct ChapterTableCell: View {
         .padding(.vertical, 22 / 3)
         .frame(alignment: .leading)
         .contentShape(Rectangle())
+        if #available(iOS 16.0, *) {
+            view.alignmentGuide(.listRowSeparatorTrailing) { d in
+                d[.trailing] // ensure separator goes all the way to the trailing edge
+            }
+        } else {
+            view
+        }
     }
 }
 
 private struct DownloadProgressView: UIViewRepresentable {
-    var progress: CGFloat
+    var progress: Float
 
     func makeUIView(context: Context) -> CircularProgressView {
         let progressView = CircularProgressView(frame: CGRect(x: 0, y: 0, width: 13, height: 13))
@@ -77,6 +94,6 @@ private struct DownloadProgressView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: CircularProgressView, context: Context) {
-        uiView.progress = progress
+        uiView.setProgress(value: progress, withAnimation: false)
     }
 }

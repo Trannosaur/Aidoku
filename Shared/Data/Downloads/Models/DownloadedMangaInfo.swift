@@ -20,6 +20,10 @@ struct DownloadedMangaInfo: Identifiable, Hashable {
     let chapterCount: Int
     let isInLibrary: Bool
 
+    var mangaIdentifier: MangaIdentifier {
+        .init(sourceKey: sourceId, mangaKey: mangaId)
+    }
+
     /// Computed property for display title (fallback to manga ID)
     var displayTitle: String {
         title ?? mangaId
@@ -71,30 +75,33 @@ struct DownloadedChapterInfo: Identifiable, Hashable {
     let size: Int64
     let downloadDate: Date?
 
+    let chapter: AidokuRunner.Chapter?
+
     /// Computed property for display title with smart formatting
     var displayTitle: String {
         switch (volumeNumber, chapterNumber, title) {
-        case (.some(let volumeNum), nil, nil):
-            return String(format: NSLocalizedString("VOLUME_X", comment: ""), volumeNum)
-        case (nil, .some(let chapterNum), nil):
-            return String(format: NSLocalizedString("CHAPTER_X", comment: ""), chapterNum)
-        case (nil, nil, .some(let chapterTitle)): return chapterTitle
-        default:
-            var arr = [String]()
-            if let volumeNumber {
-                arr.append(String(format: NSLocalizedString("VOL_X", comment: ""), volumeNumber))
-            }
-            if let chapterNumber {
-                arr.append(String(format: NSLocalizedString("CH_X", comment: ""), chapterNumber))
-            }
-            if let title {
-                arr.append("-")
-                arr.append(title)
-            }
-            if arr.isEmpty {
-                return chapterId
-            }
-            return arr.joined(separator: " ")
+            case (.some(let volumeNum), nil, nil):
+                return String(format: NSLocalizedString("VOLUME_X", comment: ""), volumeNum)
+            case (nil, .some(let chapterNum), nil):
+                return String(format: NSLocalizedString("CHAPTER_X", comment: ""), chapterNum)
+            case (nil, nil, .some(let chapterTitle)):
+                return chapterTitle
+            default:
+                var arr = [String]()
+                if let volumeNumber {
+                    arr.append(String(format: NSLocalizedString("VOL_X", comment: ""), volumeNumber))
+                }
+                if let chapterNumber {
+                    arr.append(String(format: NSLocalizedString("CH_X", comment: ""), chapterNumber))
+                }
+                if let title {
+                    arr.append("-")
+                    arr.append(title)
+                }
+                if arr.isEmpty {
+                    return chapterId
+                }
+                return arr.joined(separator: " ")
         }
     }
 
@@ -127,7 +134,15 @@ struct DownloadedChapterInfo: Identifiable, Hashable {
         ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
     }
 
-    init(chapterId: String, title: String? = nil, chapterNumber: Float? = nil, volumeNumber: Float? = nil, size: Int64, downloadDate: Date? = nil) {
+    init(
+        chapterId: String,
+        title: String? = nil,
+        chapterNumber: Float? = nil,
+        volumeNumber: Float? = nil,
+        size: Int64,
+        downloadDate: Date? = nil,
+        chapter: AidokuRunner.Chapter? = nil
+    ) {
         self.id = chapterId
         self.chapterId = chapterId
         self.title = title
@@ -135,14 +150,16 @@ struct DownloadedChapterInfo: Identifiable, Hashable {
         self.volumeNumber = volumeNumber
         self.size = size
         self.downloadDate = downloadDate
+        self.chapter = chapter
     }
 
     func toChapter() -> AidokuRunner.Chapter {
-        .init(
+        chapter ?? .init(
             key: chapterId,
             title: title,
             chapterNumber: chapterNumber,
-            volumeNumber: volumeNumber
+            volumeNumber: volumeNumber,
+            dateUploaded: downloadDate
         )
     }
 }

@@ -21,7 +21,7 @@ extension URL {
     }
 
     var contents: [URL] {
-        (try? FileManager.default.contentsOfDirectory(at: self, includingPropertiesForKeys: nil)) ?? []
+        (try? FileManager.default.contentsOfDirectory(at: self, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)) ?? []
     }
 
     var isDirectory: Bool {
@@ -29,8 +29,10 @@ extension URL {
     }
 
     var contentsByDateModified: [URL] {
-        if let urls = try? FileManager.default.contentsOfDirectory(at: self,
-                                                                   includingPropertiesForKeys: [.contentModificationDateKey]) {
+        if let urls = try? FileManager.default.contentsOfDirectory(
+            at: self,
+            includingPropertiesForKeys: [.contentModificationDateKey]
+        ) {
             return urls.sorted {
                 ((try? $0.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast)
                 >

@@ -43,10 +43,23 @@ extension InterpreterConfiguration {
 
                     return (data, response)
                 } catch {
+                    LogManager.logger.error("Error performing network request for \(sourceId): \(error)")
                     throw error
                 }
             }
         )
+    }
+}
+
+private final class URLSessionUnsecureDelegate: NSObject, URLSessionDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge
+    ) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        if let trust = challenge.protectionSpace.serverTrust {
+            return (.useCredential, URLCredential(trust: trust))
+        }
+        return (.performDefaultHandling, nil)
     }
 }
 
@@ -103,6 +116,35 @@ extension AidokuRunner.Source {
         }
         return request
     }
+
+    /// Attempt to get a custom Home-like layout for listings.
+    /// Returns nil if source doesn't provide custom Home-like layout.
+    /// For now, only used internally by KomgaSourceRunner
+    func getListingHome(listing: AidokuRunner.Listing) async throws -> Home? {
+        if let runner = runner as? KomgaSourceRunner {
+            try await runner.getListingHome(listing: listing)
+        } else {
+            nil
+        }
+    }
+
+    func getSelectedLanguages() -> [String] {
+        if languages.count > 1 {
+            if config?.languageSelectType == .single {
+                let selectedLanguage = UserDefaults.standard.string(forKey: "\(key).language")
+                if let selectedLanguage {
+                    return [selectedLanguage]
+                } else {
+                    return []
+                }
+            } else {
+                let selectedLanguages = UserDefaults.standard.stringArray(forKey: "\(key).languages")
+                return selectedLanguages ?? []
+            }
+        } else {
+            return languages
+        }
+    }
 }
 
 extension AidokuRunner.Manga {
@@ -155,9 +197,13 @@ extension AidokuRunner.Manga {
     var uniqueKey: String {
         "\(sourceKey).\(key)"
     }
+
+    var identifier: MangaIdentifier {
+        .init(sourceKey: sourceKey, mangaKey: key)
+    }
 }
 
-extension AidokuRunner.MangaStatus {
+extension AidokuRunner.PublishingStatus {
     var title: String {
         switch self {
             case .unknown: NSLocalizedString("UNKNOWN")
@@ -169,7 +215,7 @@ extension AidokuRunner.MangaStatus {
     }
 }
 
-extension AidokuRunner.MangaContentRating {
+extension AidokuRunner.ContentRating {
     var title: String {
         switch self {
             case .unknown: NSLocalizedString("UNKNOWN")
@@ -180,32 +226,83 @@ extension AidokuRunner.MangaContentRating {
     }
 }
 
+extension AidokuRunner.SourceContentRating {
+    var title: String {
+        switch self {
+            case .safe: NSLocalizedString("SAFE")
+            case .containsNsfw: NSLocalizedString("CONTAINS_NSFW")
+            case .primarilyNsfw: NSLocalizedString("PRIMARILY_NSFW")
+        }
+    }
+
+    var stringValue: String {
+        switch self {
+            case .safe: "safe"
+            case .containsNsfw: "containsNsfw"
+            case .primarilyNsfw: "primarilyNsfw"
+        }
+    }
+
+    init?(stringValue: String) {
+        switch stringValue {
+            case "safe": self = .safe
+            case "containsNsfw": self = .containsNsfw
+            case "primarilyNsfw": self = .primarilyNsfw
+            default: return nil
+        }
+    }
+}
+
 extension AidokuRunner.Chapter {
-    func formattedTitle() -> String {
-        if volumeNumber == nil && (title?.isEmpty ?? true) {
-            // Chapter X
-            return if let chapterNumber {
-                String(format: NSLocalizedString("CHAPTER_X"), chapterNumber)
+    func formattedTitle(forceMode: ChapterTitleDisplayMode = .default) -> String {
+        if forceMode == .default {
+            if volumeNumber == nil && (title?.isEmpty ?? true) {
+                // Chapter X
+                return if let chapterNumber {
+                    String(format: NSLocalizedString("CHAPTER_X"), chapterNumber)
+                } else {
+                    NSLocalizedString("UNTITLED")
+                }
+            } else if let volumeNumber, chapterNumber == nil && title == nil {
+                return String(format: NSLocalizedString("VOLUME_X"), volumeNumber)
             } else {
-                NSLocalizedString("UNTITLED")
+                var components: [String] = []
+                // Vol.X
+                if let volumeNumber {
+                    components.append(
+                        String(format: NSLocalizedString("VOL_X"), volumeNumber)
+                    )
+                }
+                // Ch.X
+                if let chapterNumber {
+                    components.append(
+                        String(format: NSLocalizedString("CH_X"), chapterNumber)
+                    )
+                }
+                // title
+                if let title, !title.isEmpty {
+                    if !components.isEmpty {
+                        components.append("-")
+                    }
+                    components.append(title)
+                }
+                return components.joined(separator: " ")
             }
-        } else if let volumeNumber, chapterNumber == nil && title == nil {
-            return String(format: NSLocalizedString("VOLUME_X"), volumeNumber)
         } else {
             var components: [String] = []
-            // Vol.X
-            if let volumeNumber {
-                components.append(
-                    String(format: NSLocalizedString("VOL_X"), volumeNumber)
-                )
+            if forceMode == .chapter {
+                if let chapterNumber {
+                    components.append(String(format: NSLocalizedString("CHAPTER_X"), chapterNumber))
+                } else if let volumeNumber {
+                    components.append(String(format: NSLocalizedString("CHAPTER_X"), volumeNumber))
+                }
+            } else {
+                if let volumeNumber {
+                    components.append(String(format: NSLocalizedString("VOLUME_X"), volumeNumber))
+                } else if let chapterNumber {
+                    components.append(String(format: NSLocalizedString("VOLUME_X"), chapterNumber))
+                }
             }
-            // Ch.X
-            if let chapterNumber {
-                components.append(
-                    String(format: NSLocalizedString("CH_X"), chapterNumber)
-                )
-            }
-            // title
             if let title, !title.isEmpty {
                 if !components.isEmpty {
                     components.append("-")

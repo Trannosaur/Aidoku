@@ -65,7 +65,6 @@
 "SORT_BY" = "Sortuj według";
 "DATE_ADDED" = "Dacie Dodania";
 "CATEGORY_ADD_TEXT" = "Wpisz nazwę nowej kategorii.";
-"CATEGORY_TITLE" = "Nazwa Kategorii";
 "BROWSE_NO_SOURCES" = "Brak źródeł";
 "EXTERNAL" = "Zewnętrzne";
 "INFO" = "Informacje";
@@ -104,14 +103,12 @@
 "SUPPORT_VIA_KOFI" = "Wesprzyj przez Ko-Fi";
 "REMOVE_DOWNLOADS" = "Usuń pobrane";
 "REMOVE_DOWNLOADS_CONFIRM" = "Usunąć wszystko pobrane?";
-"LIBRARY_ADD_FROM_BROWSE" = "Dodaj mangę z zakładki przeglądaj";
 "FILTER_BY" = "Filtruj według";
 
 // Categories
 "ALL" = "Wszystkie";
 "NONE" = "Żadne";
 "ADDING_SOURCES_GUIDE_BUTTON" = "Jak dodać źródło";
-"BROWSE_NO_SOURCES_TEXT" = "Aby zacząć, skonfiguruj swoją listę źródeł lub\notwórz źródło w Aidoku";
 "BUTTON_GET" = "Weź";
 
 // Source
@@ -159,10 +156,7 @@
 "READER" = "Czytacz";
 "OPEN_READER_VIEW" = "Otwórz okno czytacza";
 "UNREAD_CHAPTER_BADGES" = "Ikonka nieprzeczytanego rozdziału";
-"PIN_MANGA" = "Przypnij mangę";
-"PIN_MANGA_TYPE" = "Rodzaj przypięcia";
-"PIN_MANGA_UNREAD" = "Nieprzeczytane";
-"PIN_MANGA_UPDATED" = "Nowe";
+"PIN_UNREAD" = "Nieprzeczytane";
 "LIBRARY_UPDATING" = "Aktualizacja biblioteki";
 "UPDATE_INTERVAL" = "Częstotliwość aktualizacji";
 "SKIP_TITLES" = "Pomiń wybrane tytuły";
@@ -214,7 +208,6 @@
 "SOURCE_LIST_ADDED_TEXT" = "Możesz teraz przeglądać zewnętrzne źródła w zakładce Przeglądaj.";
 "LOGGING" = "Logowanie";
 "EXPORT_LOGS" = "Eksportuj dzienniki";
-"SHOW_NSFW_SOURCES" = "Pokaż źródła dla dorosłych";
 "SOURCE_LIST_URL" = "URL źródła";
 "LOCK_HISTORY_TAB" = "Zablokuj zakładkę Historia";
 "DOWNSAMPLE_IMAGES" = "Zmniejsz jakość zdjęć";
@@ -314,9 +307,7 @@
 "FIRST_ALTERNATIVE" = "Pierwsza Alternatywa";
 "DEFAULT_READING_MODE" = "Domyślny Tryb Czytania";
 "BOTH" = "Oba";
-"SYNC_WITH_TRACKER" = "Synchronizuj z trackerem";
-"SYNC_WITH_TRACKER_INFO" = "Ostatni rozdział w trackerze (%g) jest wyższy od ostatnio przeczytanego. Czy chcesz zaktualizować lokalną historię względem trackera?";
-"TRACKING" = "Śledzenie";
+"IS_TRACKING" = "Śledzenie";
 "PILLARBOX" = "Pillarbox";
 "PILLARBOX_ORIENTATION_INFO" = "Orientacja pillarboxa określa, dla jakich orientacji pillarbox powinien być włączony.";
 "PILLARBOX_ORIENTATION" = "Orientacja pillarboxa";
@@ -327,10 +318,7 @@
 "PIN" = "Przypnij";
 "UNPIN" = "Odepnij";
 "CROP_BORDERS" = "Przytnij ramki";
-"ANILIST_LOGIN_NEEDED_TEXT" = "Twój token AniList wygasł, więc moduł śledzący AniList przestanie działać do momentu ponownego zalogowania w ustawieniach.";
-"ANILIST_LOGIN_NEEDED" = "Potrzebny Login AniListy";
 "DELETE_DOWNLOAD_AFTER_READING" = "Usuń plik po przeczytaniu";
-"MAL_LOGIN_NEEDED_TEXT" = "Twój token MyAnimeList wygasł, więc moduł śledzący MyAnimeList przestanie działać do momentu ponownego zalogowania w ustawieniach.";
 "LINK_COPIED" = "Link skopiowany";
 "LINK_COPIED_TEXT" = "Link został skopiowany do schowka.";
 "%lld_PLUS_MORE" = "+%lld więcej";
@@ -343,7 +331,6 @@
 "READER_BG_COLOR_SYSTEM" = "System";
 "READER_BG_COLOR_WHITE" = "Biały";
 "READER_BG_COLOR_BLACK" = "Czarny";
-"MAL_LOGIN_NEEDED" = "Wymagane logowanie do MyAnimeList";
 "PAUSE" = "pauza";
 "RESUME" = "Wznawiać";
 "WARNING" = "Ostrzeżenie";

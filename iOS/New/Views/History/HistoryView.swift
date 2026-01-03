@@ -11,8 +11,6 @@ import SwiftUI
 import SwiftUIIntrospect
 
 struct HistoryView: View {
-    @Environment(\.dismiss) private var dismiss
-
     @StateObject private var viewModel = ViewModel()
 
     @State private var searchText = ""
@@ -33,6 +31,13 @@ struct HistoryView: View {
         Group {
             if locked {
                 lockedView
+            } else if viewModel.filteredHistory.isEmpty && viewModel.loadingState == .complete {
+                UnavailableView(
+                    NSLocalizedString("NO_HISTORY"),
+                    systemImage: "book.fill",
+                    description: Text(NSLocalizedString("NO_HISTORY_TEXT"))
+                )
+                .ignoresSafeArea()
             } else {
                 List(selection: $listSelection) {
                     let sections = viewModel.filteredHistory.values.sorted { $0.daysAgo < $1.daysAgo }
@@ -55,11 +60,13 @@ struct HistoryView: View {
                 .environment(\.defaultMinListHeaderHeight, 1) // for ios 15
                 .listSectionSpacingPlease(10)
                 .scrollBackgroundHiddenPlease()
+                .scrollDismissesKeyboardImmediately()
                 .background(Color(uiColor: .systemBackground))
             }
         }
         .customSearchable(
             text: $searchText,
+            stacked: false,
             onSubmit: {
                 Task {
                     await viewModel.search(query: searchText, delay: false)
@@ -84,7 +91,9 @@ struct HistoryView: View {
                 if UserDefaults.standard.bool(forKey: "History.lockHistoryTab") {
                     Button {
                         if locked {
-                            unlock()
+                            Task {
+                                await unlock()
+                            }
                         } else {
                             locked = true
                         }
@@ -99,14 +108,14 @@ struct HistoryView: View {
                 }
             }
         }
-        .confirmationDialog(NSLocalizedString("CLEAR_READ_HISTORY"), isPresented: $showClearHistoryConfirm, titleVisibility: .visible) {
+        .confirmationDialogOrAlert(NSLocalizedString("CLEAR_READ_HISTORY"), isPresented: $showClearHistoryConfirm, titleVisibility: .visible) {
             Button(NSLocalizedString("CLEAR"), role: .destructive) {
                 viewModel.clearHistory()
             }
         } message: {
             Text(NSLocalizedString("CLEAR_READ_HISTORY_TEXT"))
         }
-        .confirmationDialog(NSLocalizedString("CLEAR_READ_HISTORY"), isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+        .confirmationDialogOrAlert(NSLocalizedString("CLEAR_READ_HISTORY"), isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button(NSLocalizedString("REMOVE"), role: .destructive) {
                 if let entryToDelete {
                     Task {
@@ -144,7 +153,9 @@ struct HistoryView: View {
                 .fontWeight(.medium)
 
             Button(NSLocalizedString("VIEW_HISTORY")) {
-                unlock()
+                Task {
+                    await unlock()
+                }
             }
         }
         .padding(.top, -52) // slight offset to account for search bar and make the view more centered
@@ -162,7 +173,7 @@ struct HistoryView: View {
 
     func cellView(entry: HistoryEntry) -> some View {
         let manga = viewModel.mangaCache[entry.mangaCacheKey]
-        let view = HistoryEntryCell(
+        return HistoryEntryCell(
             entry: entry,
             manga: manga,
             chapter: viewModel.chapterCache[entry.chapterCacheKey]
@@ -190,15 +201,7 @@ struct HistoryView: View {
         }
         .id(entry.chapterCacheKey)
         .tag(entry.chapterCacheKey)
-
-        if #available(iOS 16.0, *) {
-            return view
-                .alignmentGuide(.listRowSeparatorLeading) { d in
-                    d[.leading]
-                }
-        } else {
-            return view
-        }
+        .offsetListSeparator()
     }
 
     @ViewBuilder
@@ -243,23 +246,29 @@ struct HistoryView: View {
     }
 
     // prompt for biometrics to unlock the view
-    func unlock() {
+    func unlock() async {
         let context = LAContext()
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) {
-            let reason = NSLocalizedString("AUTH_FOR_HISTORY")
+        let success: Bool
 
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, _ in
-                if success {
-                    locked = false
-                }
-            }
-        } else { // biometrics not supported
-            locked = false
+        do {
+            success = try await context.evaluatePolicy(
+                .defaultPolicy,
+                localizedReason: NSLocalizedString("AUTH_FOR_HISTORY")
+            )
+        } catch {
+            // The error is to be displayed to users, so we can ignore it.
+            return
         }
+
+        guard success else {
+            return
+        }
+
+        locked = false
     }
 }
 
-private struct HistoryEntryCell: View, Equatable {
+private struct HistoryEntryCell: View, @MainActor Equatable {
     let entry: HistoryEntry
 
     let manga: AidokuRunner.Manga?

@@ -56,7 +56,7 @@ struct SourceSettingsView: View {
             }
 
             Section {
-                Button(NSLocalizedString("Clear Source Cache")) {
+                Button(NSLocalizedString("CLEAR_SOURCE_CACHE")) {
                     showingClearCacheConfirm = true
                 }
 
@@ -69,17 +69,16 @@ struct SourceSettingsView: View {
             }
         }
         .navigationTitle(NSLocalizedString("SOURCE_SETTINGS"))
+        .navigationBarTitleDisplayMode(.inline)
         // for ios 15
         .background(
             Color(uiColor: .systemGroupedBackground)
                 .ignoresSafeArea()
         )
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
+            ToolbarItem(placement: .cancellationAction) {
+                CloseButton {
                     path.dismiss()
-                } label: {
-                    Text(NSLocalizedString("DONE")).bold()
                 }
             }
         }
@@ -101,7 +100,7 @@ struct SourceSettingsView: View {
         } message: {
             Text(String(format: NSLocalizedString("RESET_SETTINGS_CONFIRM_%@"), source.name))
         }
-        .confirmationDialog(NSLocalizedString("CLEAR_SOURCE_CACHE"), isPresented: $showingClearCacheConfirm, titleVisibility: .visible) {
+        .confirmationDialogOrAlert(NSLocalizedString("CLEAR_SOURCE_CACHE"), isPresented: $showingClearCacheConfirm, titleVisibility: .visible) {
             Button(NSLocalizedString("CLEAR"), role: .destructive) {
                 clearCache()
             }

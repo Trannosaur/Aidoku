@@ -129,6 +129,74 @@ extension View {
         }
     }
 
+    func scrollDismissesKeyboardImmediately() -> some View {
+        if #available(iOS 16.0, *) {
+            return self.scrollDismissesKeyboard(.immediately)
+        } else {
+            return self
+        }
+    }
+
+    func contentMarginsPlease(
+        _ edges: Edge.Set = .all,
+        _ length: CGFloat?,
+    ) -> some View {
+        if #available(iOS 17.0, *) {
+            return self.contentMargins(edges, length)
+        } else {
+            return self
+        }
+
+    }
+
+    func matchedTransitionSourcePlease(id: some Hashable, in namespace: Namespace.ID) -> some View {
+        if #available(iOS 18.0, *) {
+            return self.matchedTransitionSource(id: id, in: namespace)
+        } else {
+            return self
+        }
+    }
+
+    func navigationTransitionZoom(sourceID: some Hashable, in namespace: Namespace.ID) -> some View {
+        if #available(iOS 18.0, *) {
+            return self.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
+        } else {
+            return self
+        }
+    }
+
+    func menuActionDismissDisabled() -> some View {
+        if #available(iOS 16.4, *) {
+            return self.menuActionDismissBehavior(.disabled)
+        } else {
+            return self
+        }
+    }
+
+    func centerScrollAnchorPlease() -> some View {
+        if #available(iOS 18.0, *) {
+            return self.defaultScrollAnchor(.center, for: .alignment)
+        } else {
+            return self
+        }
+    }
+
+    func onChangeWrapper<V: Equatable>(
+        of value: V,
+        initial: Bool = false,
+        _ action: @escaping (_ oldValue: V, _ newValue: V) -> Void
+    ) -> some View {
+        if #available(iOS 17.0, *) {
+            return self.onChange(of: value, initial: initial, action)
+        } else {
+            return self.onChange(of: value) { newValue in
+                action(newValue, newValue)
+            }
+        }
+    }
+}
+
+extension View {
     @ViewBuilder
     func tag<T: Hashable>(_ tag: T, selectable: Bool) -> some View {
         if #available(iOS 17.0, macOS 14.0, *) {
@@ -235,6 +303,34 @@ extension View {
             transform(self)
         } else {
             self
+        }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func confirmationDialogOrAlert<S, A, M>(
+        _ title: S,
+        isPresented: Binding<Bool>,
+        titleVisibility: Visibility = .automatic,
+        @ViewBuilder actions: () -> A,
+        @ViewBuilder message: () -> M
+    ) -> some View where S: StringProtocol, A: View, M: View {
+        if #available(iOS 26.0, *) {
+            self.alert(
+                title,
+                isPresented: isPresented,
+                actions: actions,
+                message: message
+            )
+        } else {
+            self.confirmationDialog(
+                title,
+                isPresented: isPresented,
+                titleVisibility: titleVisibility,
+                actions: actions,
+                message: message
+            )
         }
     }
 }

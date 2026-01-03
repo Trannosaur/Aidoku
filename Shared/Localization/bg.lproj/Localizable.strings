@@ -42,7 +42,6 @@
 "REMOVE_ALL_DOWNLOADS" = "Премахни всички изтегляния";
 "CLEAR" = "Изчистване";
 "DOWNLOADED" = "Изтеглено";
-"BROWSE_NO_SOURCES_TEXT" = "Конфигурирайте своя списък с източници или отворете\nизточник в Aidoku, за да започнете";
 "LOADING_ELLIPSIS" = "Зареждане…";
 
 // Library
@@ -51,7 +50,6 @@
 "CATEGORIES" = "Категории";
 "UNKNOWN" = "Неизвестно";
 "REMOVE_DOWNLOAD" = "Премахни изтегляне";
-"CATEGORY_TITLE" = "Заглавие на категория";
 "LANGUAGES" = "Езици";
 
 // Source
@@ -65,7 +63,6 @@
 "CATEGORY_ADD" = "Добавяне на категории";
 "CANCEL_DOWNLOAD" = "Откажи изтегляне";
 "MANGA_INFO" = "Информация за мангата";
-"LIBRARY_ADD_FROM_BROWSE" = "Добавете манга от раздела за браузване";
 "UNAVAILABLE" = "Недостъпен";
 "BROWSE_NO_SOURCES" = "Няма източници";
 "OK" = "ОК";
@@ -137,9 +134,6 @@
 "READER" = "Четец";
 "OPEN_READER_VIEW" = "Отваряне на изглед за четене";
 "UNREAD_CHAPTER_BADGES" = "Значки за непрочетени глави";
-"PIN_MANGA" = "Закачи манга";
-"PIN_MANGA_TYPE" = "Вид значка";
-"PIN_MANGA_UPDATED" = "Обновени";
 "LIBRARY_UPDATING" = "Обновяване на библиотеката";
 "UPDATE_INTERVAL" = "Интервал на обновяване";
 "SKIP_TITLES" = "Пропускане на заглавията";
@@ -151,7 +145,6 @@
 "SOURCE_LISTS" = "Списъци с източници";
 "SOURCE_LIST_ADDED" = "Списък с източници е добавен";
 "SOURCE_LIST_ADDED_TEXT" = "Сега можете да преглеждате външни източници в раздела Преглед.";
-"SHOW_NSFW_SOURCES" = "Покажи NSFW източници";
 "SOURCE_LIST_URL" = "URL на списъка с източници";
 "SOURCE_LIST_ADD_FAIL" = "Неуспешно добавяне на списък с източници";
 "BACKUPS" = "Резервни копия";
@@ -191,7 +184,7 @@
 "DISCORD_SERVER" = "Дискорд сървър";
 "MISSING_SOURCE_TEXT" = "Изглежда, че оригиналният източник липсва за тази манга. Моля, изтеглете я отново или премахнете това заглавие от библиотеката си.";
 "INCOGNITO_MODE_TEXT" = "Паузиране на исторята на четене когато е включено";
-"PIN_MANGA_UNREAD" = "Нечетени";
+"PIN_UNREAD" = "Нечетени";
 "ONLY_UPDATE_ON_WIFI" = "Обновяване само през Wi-Fi";
 "DAILY" = "Ежедневно";
 "REFRESH_METADATA" = "Обновяване на метаданни";
@@ -280,7 +273,6 @@
 "LAST_UPDATED" = "Последно обновление";
 "UPCOMING" = "Предстоящи";
 "CATEGORY_NAME" = "Име на категория";
-"SYNC_WITH_TRACKER" = "Синхронизация с Тракер";
 "FIRST_ALTERNATIVE" = "Първа алтернатива";
 "MIGRATE_%i_ITEMS?" = "Мигриране на %i обекти?";
 "MIGRATE_ONE_ITEM?" = "Мигриране на 1 обект?";
@@ -294,13 +286,10 @@
 "FAILED_CHAPTER_LOAD_INFO" = "Може би сте офлайн или източника има проблеми.";
 "WEBTOON" = "Webtoon";
 "1_CHAPTER" = "1 глава";
-"SYNC_WITH_TRACKER_INFO" = "Изглежда че последната глава задаена в тракер (%g) е по-висока от последната прочетена глава. Искате ли да обновите локалната история за да съвпадат?";
 "DEFAULT_READING_MODE" = "Режим на четене по подразбиране";
 "PILLARBOX_ORIENTATION_INFO" = "Pillarbox Orientation определя за кои ориентации трябва да бъде активирана функцията pillarboxing.";
-"MAL_LOGIN_NEEDED" = "MyAnimeList логин е необходим";
 "BACKUP_ERROR_TEXT" = "По време на възстановяването беше открита грешка: %@. Възможно е резервното копие да е невалидно.";
-"ANILIST_LOGIN_NEEDED" = "AniList логин е необходим";
-"TRACKING" = "Следене";
+"IS_TRACKING" = "Следене";
 "ALL_CHAPTERS_READ" = "Всички глави са прочетени";
 "CLEAR_READ_HISTORY_TEXT" = "Това действие е необратимо. Всичката история ще бъде изтрита.";
 "RESET_SETTINGS_TEXT" = "Това действие е необратимо. Всички настройки и източници ще бъдат рестартрирани.";
@@ -347,8 +336,6 @@
 "NOT_FOUND" = "Не намерен";
 "MOST_CHAPTERS_SLOWER" = "Повечето глави (по-бавно)";
 "PILLARBOX_ORIENTATION" = "Pillarbox ориентация";
-"ANILIST_LOGIN_NEEDED_TEXT" = "Вашият AniList токен е изтекъл, за това AniList тракера ще спре да работи докато не се логнете отново в настройките.";
-"MAL_LOGIN_NEEDED_TEXT" = "Вашият MyAnimeList токен е изтекъл, за това MyAnimeList тракера ще спре да работи докато не се логнете отново в настройките.";
 "BACKUP_ERROR" = "Грешка при възстановяване на резервно копие";
 "BOTH" = "И двете";
 "SCANLATOR" = "Сканлатор";
@@ -357,7 +344,6 @@
 "ENABLE_PERMISSION" = "Включване на разрешения";
 "CONTENT" = "Съдържание";
 "%@_EXPERIMENTAL" = "%@ (Експериментално)";
-"DOWNLOAD_MANAGER" = "Мениджър на свалянията";
 "NO_DOWNLOADS" = "Без сваляния";
 "NO_DOWNLOADS_TEXT" = "Изтегленото съдържание ще се появи тук.";
 "DOWNLOADED_CHAPTERS" = "Свалени глави";

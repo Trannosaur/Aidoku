@@ -8,17 +8,13 @@
 import Foundation
 import CryptoKit
 
-#if canImport(UIKit)
-import UIKit
-#endif
-
-class MyAnimeListApi {
+actor MyAnimeListApi {
     private let decoder = JSONDecoder()
 
     let baseApiUrl = "https://api.myanimelist.net/v2"
 
     // Registered under Skitty's MAL account
-    let oauth = OAuthClient(
+    nonisolated let oauth = OAuthClient(
         id: "myanimelist",
         clientId: "50cc1b37e2af29f668b087485ba46a46",
         baseUrl: "https://myanimelist.net/v1/oauth2",
@@ -29,49 +25,50 @@ class MyAnimeListApi {
         try await requestData(urlRequest: oauth.authorizedRequest(for: url))
     }
 
+    func refreshAccessToken() async -> OAuthResponse? {
+        guard let refreshToken = await oauth.tokens?.refreshToken else { return nil }
+
+        guard let url = URL(string: oauth.baseUrl + "/token") else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = [
+            "client_id": oauth.clientId,
+            "refresh_token": refreshToken,
+            "grant_type": "refresh_token"
+        ].percentEncoded()
+        let response: OAuthResponse? = try? await URLSession.shared.object(from: request)
+        await oauth.setTokens(response)
+        return response
+    }
+
     private func requestData(urlRequest: URLRequest) async throws -> Data {
         var (data, response) = try await URLSession.shared.data(for: urlRequest)
         let statusCode = (response as? HTTPURLResponse)?.statusCode
 
-        if oauth.tokens == nil {
-            oauth.loadTokens()
+        if await oauth.tokens == nil {
+            await oauth.loadTokens()
         }
 
-        // check if token expired
-        if statusCode == 400 || statusCode == 401 || statusCode == 403 || oauth.tokens!.expired {
-            // ensure we have a refresh token, otherwise we need to fully re-auth
-            guard let refreshToken = oauth.tokens?.refreshToken else {
-                if !oauth.tokens!.askedForRefresh {
-                    oauth.tokens!.askedForRefresh = true
-                    oauth.saveTokens()
+        let tokenExpired = await oauth.tokens?.expired == true
 
-#if !os(macOS)
-                    await (UIApplication.shared.delegate as? AppDelegate)?.presentAlert(
-                        title: NSLocalizedString("MAL_LOGIN_NEEDED", comment: ""),
-                        message: NSLocalizedString("MAL_LOGIN_NEEDED_TEXT", comment: "")
-                    )
-#endif
-                }
+        // check if token expired
+        if statusCode == 400 || statusCode == 401 || statusCode == 403 || tokenExpired {
+            // ensure we have a refresh token, otherwise we need to fully re-auth
+            let reloginNeeded = await oauth.checkIfReloginNeeded(trackerName: "MyAnimeList")
+            guard !reloginNeeded else {
                 return data
             }
 
             // refresh access token
-            guard let url = URL(string: oauth.baseUrl + "/token") else { return data }
-            var request = oauth.authorizedRequest(for: url)
-            request.httpMethod = "POST"
-            request.httpBody = [
-                "client_id": oauth.clientId,
-                "refresh_token": refreshToken,
-                "grant_type": "refresh_token"
-            ].percentEncoded()
-            oauth.tokens = try await URLSession.shared.object(from: request)
-            oauth.saveTokens()
-
-            // try request again
-            if let newAuthorization = oauth.authorizedRequest(for: url).value(forHTTPHeaderField: "Authorization") {
-                var newRequest = urlRequest
-                newRequest.setValue(newAuthorization, forHTTPHeaderField: "Authorization")
-                (data, _) = try await URLSession.shared.data(for: newRequest)
+            if await refreshAccessToken() != nil {
+                // try request again with refreshed token
+                let newAuthorization = await oauth.authorizedRequest(for: URL(string: oauth.baseUrl + "/token")!)
+                    .value(forHTTPHeaderField: "Authorization")
+                if let newAuthorization {
+                    var newRequest = urlRequest
+                    newRequest.setValue(newAuthorization, forHTTPHeaderField: "Authorization")
+                    (data, _) = try await URLSession.shared.data(for: newRequest)
+                }
             }
         }
 
@@ -120,7 +117,7 @@ extension MyAnimeListApi {
 
     func updateMangaStatus(id: Int, status: MyAnimeListMangaStatus) async {
         guard let url = URL(string: baseApiUrl + "/manga/\(id)/my_list_status") else { return }
-        var request = oauth.authorizedRequest(for: url)
+        var request = await oauth.authorizedRequest(for: url)
         request.httpMethod = "PATCH"
         request.httpBody = status.percentEncoded()
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")

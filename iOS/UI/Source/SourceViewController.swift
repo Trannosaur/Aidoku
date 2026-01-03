@@ -8,7 +8,7 @@
 import UIKit
 import SafariServices
 
-class SourceViewController: MangaCollectionViewController {
+class SourceViewController: OldMangaCollectionViewController {
 
     let viewModel = SourceViewModel()
 
@@ -42,6 +42,8 @@ class SourceViewController: MangaCollectionViewController {
         if UIDevice.current.userInterfaceIdiom != .pad {
             navigationItem.hidesSearchBarWhenScrolling = false
         }
+
+        collectionView.keyboardDismissMode = .onDrag
 
         if source.titleSearchable {
             let searchController = UISearchController(searchResultsController: nil)
@@ -152,22 +154,20 @@ class SourceViewController: MangaCollectionViewController {
         }
     }
 
-    override func makeCellRegistration() -> CellRegistration {
-        CellRegistration { cell, _, info in
-            cell.sourceId = info.sourceId
-            cell.mangaId = info.mangaId
-            cell.title = info.title
-            Task {
-                let inLibrary = await CoreDataManager.shared.container.performBackgroundTask { context in
-                    CoreDataManager.shared.hasLibraryManga(
-                        sourceId: info.sourceId,
-                        mangaId: info.mangaId,
-                        context: context
-                    )
-                }
-                cell.showsBookmark = inLibrary
-                await cell.loadImage(url: info.coverUrl)
+    override func configure(cell: MangaGridCell, info: MangaInfo) {
+        cell.sourceId = info.sourceId
+        cell.mangaId = info.mangaId
+        cell.title = info.title
+        Task {
+            let inLibrary = await CoreDataManager.shared.container.performBackgroundTask { context in
+                CoreDataManager.shared.hasLibraryManga(
+                    sourceId: info.sourceId,
+                    mangaId: info.mangaId,
+                    context: context
+                )
             }
+            cell.showsBookmark = inLibrary
+            await cell.loadImage(url: info.coverUrl)
         }
     }
 

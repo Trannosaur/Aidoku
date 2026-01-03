@@ -34,7 +34,6 @@
 "LANGUAGE" = "Lingvo";
 "INFO" = "Informo";
 "BUTTON_FILTER" = "Filtri";
-"CATEGORY_TITLE" = "Titolo de kategorio";
 "DEFAULT_CATEGORY" = "Implicita kategorio";
 "ALWAYS_ASK" = "Ĉiam demandi";
 "UPDATES" = "Ĝisdatigoj";
@@ -95,7 +94,6 @@
 "USE_SYSTEM_APPEARANCE" = "Uzi sisteman etoson";
 "EVERY_12_HOURS" = "Ĉiuduontage";
 "EVERY_2_DAYS" = "Ĉiudutage";
-"PIN_MANGA_UPDATED" = "Ĝisdatigita";
 "SOURCE_LISTS" = "Fontolistoj";
 "LOG_SERVER" = "Protokolservilo";
 "EXPORT_LOGS" = "Elporti protokolojn";
@@ -145,7 +143,7 @@
 "ALL" = "Ĉio";
 "NONE" = "Nenio";
 "EDIT_CATEGORIES" = "Modifi kategoriojn";
-"PIN_MANGA_UNREAD" = "Nelegita";
+"PIN_UNREAD" = "Nelegita";
 "LOCKED_CATEGORIES" = "Ŝlositaj kategorioj";
 "ADVANCED" = "Altnivela";
 "SELECT_CHAPTERS" = "Elekti ĉapitrojn";

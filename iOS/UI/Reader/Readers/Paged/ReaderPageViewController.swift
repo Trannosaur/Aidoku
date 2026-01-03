@@ -7,8 +7,7 @@
 
 import UIKit
 
-class ReaderPageViewController: BaseViewController {
-
+class ReaderPageViewController: BaseObservingViewController {
     enum InfoPageType {
         case previous
         case next
@@ -21,9 +20,11 @@ class ReaderPageViewController: BaseViewController {
 
     let type: PageType
 
+    weak var delegate: ReaderHoldingDelegate?
+
     private var infoView: ReaderInfoPageView?
-    private var zoomView: ZoomableScrollView?
-    var pageView: ReaderPageView?
+    private(set) var zoomView: ZoomableScrollView?
+    private(set) var pageView: ReaderPageView?
 
     private lazy var reloadButton = {
         let reloadButton = UIButton(type: .roundedRect)
@@ -52,17 +53,33 @@ class ReaderPageViewController: BaseViewController {
     private var pageSet = false
     private var page: Page?
     private var sourceId: String?
+    private var imageAspectRatio: CGFloat? // Aspect ratio of the image, > 1 means wide image
+    private var pageBackground: PageBackground?
 
-    init(type: PageType) {
+    // disable auto page background in double page controller
+    var isInDoublePageController = false {
+        didSet {
+            loadPageBackground()
+        }
+    }
+
+    /// Callback when image aspect ratio is updated
+    var onAspectRatioUpdated: (() -> Void)?
+
+    /// Callback when image loading is complete and wide image status is determined
+    var onImageisWideImage: ((Bool) -> Void)?
+
+    init(type: PageType, delegate: ReaderHoldingDelegate?) {
         self.type = type
+        self.delegate = delegate
         super.init()
 
         // need this so the page / chapters can be set before the rest of the views are loaded
         switch type {
-        case .info(let infoPageType):
-            infoView = ReaderInfoPageView(type: infoPageType == .previous ? .previous : .next)
-        case .page:
-            pageView = ReaderPageView(parent: self)
+            case .info(let infoPageType):
+                infoView = ReaderInfoPageView(type: infoPageType == .previous ? .previous : .next)
+            case .page:
+                pageView = ReaderPageView(parent: self)
         }
     }
 
@@ -89,7 +106,10 @@ class ReaderPageViewController: BaseViewController {
                 pageView.translatesAutoresizingMaskIntoConstraints = false
                 zoomView.addSubview(pageView)
                 zoomView.zoomView = pageView
-
+                // hide live text button when zoomed in
+                zoomView.onZoomScaleChanged = { [weak self] scale in
+                    self?.pageView?.setLiveTextHidden(scale != 1 || (self?.delegate?.barsHidden ?? false))
+                }
                 view.addSubview(reloadButton)
 
                 self.zoomView = zoomView
@@ -120,6 +140,21 @@ class ReaderPageViewController: BaseViewController {
         }
     }
 
+    override func observe() {
+        addObserver(forName: "Reader.backgroundColor") { [weak self] _ in
+            self?.loadPageBackground()
+        }
+
+        addObserver(forName: .orientationDidChange) { [weak self] _ in
+            self?.loadPageBackground(forceReload: true)
+        }
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        loadPageBackground() // fix page background resetting on system appearance change
+    }
+
     func setPage(_ page: Page, sourceId: String? = nil) {
         guard !pageSet, let pageView else { return }
         pageSet = true
@@ -131,6 +166,62 @@ class ReaderPageViewController: BaseViewController {
             let result = await pageView.setPage(page, sourceId: sourceId)
             zoomView?.zoomEnabled = result
             reloadButton.isHidden = result
+
+            // Update aspect ratio
+            let oldAspectRatio = imageAspectRatio
+            if result, let image = pageView.imageView.image {
+                imageAspectRatio = image.size.width / image.size.height
+            } else {
+                imageAspectRatio = nil
+            }
+
+            // Notify if aspect ratio changed and became wide image
+            if oldAspectRatio != imageAspectRatio && isWideImage {
+                onAspectRatioUpdated?()
+            }
+
+            // Notify when image loading is complete with wide image status
+            onImageisWideImage?(isWideImage)
+
+            // determine page background color
+            loadPageBackground()
+        }
+    }
+
+    func loadPageBackground(forceReload: Bool = false) {
+        // ensure no old gradients are left
+        view.layer.sublayers?.removeAll(where: { $0 is CAGradientLayer })
+
+        if
+            UserDefaults.standard.string(forKey: "Reader.backgroundColor") == "auto",
+            !isInDoublePageController,
+            pageBackground != nil || pageView?.imageView.image != nil
+        {
+            let background = if !forceReload, let pageBackground {
+                pageBackground
+            } else if let image = pageView?.imageView.image {
+                PageBackground.choose(for: image, isLandscape: {
+                    let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
+                    let orientation = if #available(iOS 16.0, *) {
+                        scene?.effectiveGeometry.interfaceOrientation
+                    } else {
+                        scene?.interfaceOrientation
+                    }
+                    return orientation?.isLandscape ?? false
+                }())
+            } else {
+                PageBackground.color(.clear)
+            }
+            pageBackground = background
+            switch background {
+                case .color(let color):
+                    view.backgroundColor = color
+                case .gradient(let gradient):
+                    gradient.frame = view.bounds
+                    view.layer.insertSublayer(gradient, at: 0)
+            }
+        } else {
+            view.backgroundColor = nil
         }
     }
 
@@ -147,5 +238,12 @@ class ReaderPageViewController: BaseViewController {
         pageSet = false
         pageView?.imageView.image = nil
         zoomView?.zoomEnabled = false
+        imageAspectRatio = nil
+    }
+
+    /// Check if this is a wide image (aspect ratio > 1)
+    var isWideImage: Bool {
+        guard let imageAspectRatio else { return false }
+        return imageAspectRatio > 1
     }
 }

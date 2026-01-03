@@ -7,17 +7,23 @@
 
 import Foundation
 
-struct Backup: Codable, Hashable {
+struct Backup: Codable, Hashable, Identifiable, Sendable {
+    var id: Int { hashValue }
+
     var library: [BackupLibraryManga]?
     var history: [BackupHistory]?
     var manga: [BackupManga]?
     var chapters: [BackupChapter]?
     var trackItems: [BackupTrackItem]?
+    var readingSessions: [BackupReadingSession]?
+    var updates: [BackupUpdate]?
     var categories: [String]?
     var sources: [String]?
     var sourceLists: [String]?
+    var settings: [String: JsonAnyValue]?
     var date: Date
     var name: String?
+    var automatic: Bool?
     var version: String?
 
     static func load(from url: URL) -> Backup? {

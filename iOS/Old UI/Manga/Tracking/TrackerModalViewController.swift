@@ -5,14 +5,14 @@
 //  Created by Skitty on 6/26/22.
 //
 
+import AidokuRunner
 import UIKit
 
 class TrackerModalViewController: MiniModalViewController {
-
-    let manga: Manga
+    let manga: AidokuRunner.Manga
     var swiftuiViewController: HostingController<TrackerListView>
 
-    init(manga: Manga) {
+    init(manga: AidokuRunner.Manga) {
         self.manga = manga
         swiftuiViewController = HostingController(rootView: TrackerListView(manga: manga))
         swiftuiViewController.view.backgroundColor = .clear
@@ -29,24 +29,26 @@ class TrackerModalViewController: MiniModalViewController {
         containerView.clipsToBounds = true
 
         addChild(swiftuiViewController)
-        swiftuiViewController.view.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(swiftuiViewController.view)
         swiftuiViewController.didMove(toParent: self)
 
-        swiftuiViewController.view.topAnchor.constraint(equalTo: scrollView.topAnchor).isActive = true
-        swiftuiViewController.view.widthAnchor.constraint(equalTo: scrollView.widthAnchor).isActive = true
-        swiftuiViewController.view.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor).isActive = true
-
-        scrollView.topAnchor.constraint(equalTo: containerView.topAnchor).isActive = true
+        swiftuiViewController.view.translatesAutoresizingMaskIntoConstraints = false
 
         let screenHeightConstraint = scrollView.heightAnchor.constraint(lessThanOrEqualToConstant: UIScreen.main.bounds.height - 64)
         screenHeightConstraint.priority = .defaultHigh
-        screenHeightConstraint.isActive = true
 
         let hostingHeightConstraint = scrollView.heightAnchor.constraint(equalTo: swiftuiViewController.view.heightAnchor, constant: 20)
         hostingHeightConstraint.priority = .defaultLow
-        hostingHeightConstraint.isActive = true
 
-        scrollView.widthAnchor.constraint(equalTo: containerView.widthAnchor).isActive = true
+        NSLayoutConstraint.activate([
+            swiftuiViewController.view.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            swiftuiViewController.view.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            swiftuiViewController.view.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
+
+            scrollView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            scrollView.widthAnchor.constraint(equalTo: containerView.widthAnchor),
+            screenHeightConstraint,
+            hostingHeightConstraint
+        ])
     }
 }

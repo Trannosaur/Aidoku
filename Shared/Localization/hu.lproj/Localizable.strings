@@ -8,7 +8,7 @@
 "REFRESH_METADATA" = "Metaadatok frissítése";
 "UPDATES" = "Frissítések";
 "DOWNLOAD_QUEUE" = "Letöltési sor";
-"PIN_MANGA_UNREAD" = "Olvasatlan";
+"PIN_UNREAD" = "Olvasatlan";
 "READ" = "Olvasott";
 "ADD_TO_LIBRARY" = "Hozzáadás a Könyvtárhoz";
 "MARK_ALL" = "Összes megjelölése";
@@ -70,7 +70,6 @@
 "NEXT_COLON" = "Következő:";
 "MARK_READ" = "Megjelölés olvasottként";
 "REMOVE_DOWNLOAD" = "Letöltés törlése";
-"CATEGORY_TITLE" = "Kategória neve";
 "LANGUAGES" = "Nyelvek";
 "APPEARANCE_DARK" = "Sötét";
 "PORTRAIT" = "Álló";
@@ -110,15 +109,12 @@
 "LIBRARY_EMPTY" = "A könyvtár üres";
 "VERSION" = "Verzió";
 "EXPORT" = "Exportálás";
-"PIN_MANGA_UPDATED" = "Frissítve";
 "MARK_UNREAD" = "Megjelölés olvasatlanként";
 "MARK" = "Megjelelölés";
 "RENAME" = "Átnevezés";
 "GENERAL" = "Általános";
 "SELECT_CHAPTERS" = "Fejezetek kijelölése";
-"LIBRARY_ADD_FROM_BROWSE" = "Adj hozzá mangát a \"Böngészés\" fülről";
 "CATEGORY_ADD_TEXT" = "Add meg az új kategória címét ahhoz, hogy létrejöjjön.";
-"BROWSE_NO_SOURCES_TEXT" = "Konfiguráljon saját forrás listát vagy\nnyisson meg egy forrást az Aidokuban a kezdéshez";
 "BUTTON_ERROR" = "HIBA";
 "UNPIN" = "Kitűzés visszavonása";
 "INFO" = "Infó";
@@ -179,8 +175,6 @@
 "SUPPPORT_DEVELOPMENT" = "Támogasd A Fejlesztést";
 "OPEN_READER_VIEW" = "Olvasói Nézet Megnyitása";
 "UNREAD_CHAPTER_BADGES" = "Olvasatlan Fejezetjelvények";
-"PIN_MANGA" = "Manga Kitűzése";
-"PIN_MANGA_TYPE" = "Kitűzés Tipusa";
 "LIBRARY_UPDATING" = "Könyvtár Frissít";
 "UPDATE_INTERVAL" = "Frissítési Időszakas";
 "SKIP_TITLES" = "Címek Átugrása";
@@ -204,7 +198,6 @@
 "MANGA_PER_ROW" = "Manga soronként";
 "ONLY_DOWNLOAD_ON_WIFI" = "Letöltés Csak Wi-Fi-n";
 "WITH_COMPLETED_STATUS" = "Befejezett státuszuak";
-"SHOW_NSFW_SOURCES" = "NSFW Források Megjelenítése";
 "SOURCE_LIST_URL" = "Forráslista URL";
 "SOURCE_LIST_ADDED" = "Forráslista Hozzáadva";
 "SOURCE_LIST_ADDED_TEXT" = "A Böngészés lapon most már böngészhet a külső források között.";
@@ -217,7 +210,6 @@
 "CONTENT" = "Tartalom";
 "%@_EXPERIMENTAL" = "%@ (Kísérleti)";
 "REMOVE_ALL_DOWNLOADS_CONFIRM" = "Biztos vagy benne, hogy törölni szeretnéd az összes letöltött fájlt?";
-"DOWNLOAD_MANAGER" = "Letöltéskezelő";
 "NO_DOWNLOADS" = "Nincsenek Letöltések";
 "NO_DOWNLOADS_TEXT" = "A letöltött tartalmak itt fognak megjelenni.";
 "DOWNLOADED_CHAPTERS" = "Letöltött Fejezetek";
@@ -259,6 +251,5 @@
 "NO_AVAILABLE_SOURCES_INFO" = "Módosítsa a szűrőket a külső források megtekintéséhez.";
 "ALL_SOURCES_INSTALLED" = "Minden Forrás Telepítve";
 "ALL_SOURCES_INSTALLED_INFO" = "Nincs több telepíteni való külső forrás.";
-"LOCAL_SOURCE" = "Helyi Forrás";
-"LOCAL_SOURCE_INFO" = "A helyi forrás lehetővé teszi saját olvasási könyvtár feltöltését és kezelését közvetlenül az Aidoku-ban.";
-"LOCAL_SOURCE_SETUP" = "Helyi Forrás Beállítása";
+"LOCAL_FILES_INFO" = "A helyi forrás lehetővé teszi saját olvasási könyvtár feltöltését és kezelését közvetlenül az Aidoku-ban.";
+"LOCAL_FILES_SETUP" = "Helyi Forrás Beállítása";

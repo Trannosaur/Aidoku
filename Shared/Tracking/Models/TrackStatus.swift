@@ -8,7 +8,7 @@
 import Foundation
 
 /// A class wrapping integer values that indicate a title's tracking status.
-class TrackStatus {
+struct TrackStatus: Sendable {
     static let reading = TrackStatus(1)
     static let planning = TrackStatus(2)
     static let completed = TrackStatus(3)
@@ -31,13 +31,13 @@ class TrackStatus {
 
     func toString() -> String {
         switch rawValue {
-        case 1: return NSLocalizedString("TRACK_READING", comment: "")
-        case 2: return NSLocalizedString("TRACK_PLANNING", comment: "")
-        case 3: return NSLocalizedString("TRACK_COMPLETED", comment: "")
-        case 4: return NSLocalizedString("TRACK_PAUSED", comment: "")
-        case 5: return NSLocalizedString("TRACK_DROPPED", comment: "")
-        case 6: return NSLocalizedString("TRACK_REREADING", comment: "")
-        default: return NSLocalizedString("UNKNOWN", comment: "")
+            case 1: return NSLocalizedString("TRACK_READING", comment: "")
+            case 2: return NSLocalizedString("TRACK_PLANNING", comment: "")
+            case 3: return NSLocalizedString("TRACK_COMPLETED", comment: "")
+            case 4: return NSLocalizedString("TRACK_PAUSED", comment: "")
+            case 5: return NSLocalizedString("TRACK_DROPPED", comment: "")
+            case 6: return NSLocalizedString("TRACK_REREADING", comment: "")
+            default: return NSLocalizedString("UNKNOWN", comment: "")
         }
     }
 }

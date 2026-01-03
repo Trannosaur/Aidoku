@@ -205,6 +205,7 @@ struct KomgaBook: Codable, Sendable {
     struct Media: Codable, Sendable {
         let mediaProfile: String
         let epubDivinaCompatible: Bool
+        let pagesCount: Int
     }
 
     struct Metadata: Codable, Sendable {
@@ -214,6 +215,7 @@ struct KomgaBook: Codable, Sendable {
         }
 
         let title: String
+        let number: String
         let numberSort: Float
         let authors: [Author]
         let tags: [String]
@@ -223,9 +225,17 @@ struct KomgaBook: Codable, Sendable {
 
     let id: String
     let seriesId: String
+    let libraryId: String
     let name: String
     let media: Media
     let metadata: Metadata
+    let readProgress: KomgaBookReadProgress?
+}
+
+struct KomgaBookReadProgress: Codable {
+    let page: Int
+    let completed: Bool
+    let lastModified: Date?
 }
 
 extension KomgaBook {
@@ -297,20 +307,22 @@ struct KomgaSeries: Codable, Sendable {
     }
 
     let id: String
+    let libraryId: String
     let name: String
     let metadata: Metadata
     let booksMetadata: BooksMetadata
+    let booksCount: Int
 }
 
 extension KomgaSeries {
     func intoManga(sourceKey: String, baseUrl: String) -> AidokuRunner.Manga {
-        let status: AidokuRunner.MangaStatus = switch metadata.status {
+        let status: AidokuRunner.PublishingStatus = switch metadata.status {
             case .ended: .completed
             case .ongoing: .ongoing
             case .abandoned: .cancelled
             case .hiatus: .hiatus
         }
-        let contentRating: AidokuRunner.MangaContentRating = metadata.ageRating.flatMap {
+        let contentRating: AidokuRunner.ContentRating = metadata.ageRating.flatMap {
             if $0 >= 18 {
                 .nsfw
             } else if $0 >= 16 {
@@ -346,7 +358,8 @@ extension KomgaSeries {
                     nil
                 }
             },
-            description: metadata.summary.isEmpty ? booksMetadata.summary : metadata.summary,
+            description: (metadata.summary.isEmpty ? booksMetadata.summary : metadata.summary)?
+                .replacingOccurrences(of: "\n", with: "  \n"),
             url: URL(string: "\(baseUrl)/series/\(id)"),
             tags: (metadata.genres + metadata.tags).sorted(),
             status: status,

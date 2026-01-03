@@ -8,6 +8,15 @@
 import CoreData
 
 extension CoreDataManager {
+    /// Remove all update objects.
+    func clearUpdates(context: NSManagedObjectContext? = nil) {
+        clear(request: MangaUpdateObject.fetchRequest(), context: context)
+    }
+
+    /// Gets all update objects.
+    func getUpdates(context: NSManagedObjectContext? = nil) -> [MangaUpdateObject] {
+        (try? (context ?? self.context).fetch(MangaUpdateObject.fetchRequest())) ?? []
+    }
 
     /// Get a particular manga update object.
     func getMangaUpdate(
@@ -70,6 +79,30 @@ extension CoreDataManager {
         mangaUpdateObject.chapterId = chapterObject.id
         mangaUpdateObject.date = Date()
         mangaUpdateObject.chapter = chapterObject
+    }
+
+    /// Removes manga update objects by their composite keys
+    func removeMangaUpdates(
+        updates: [ChapterIdentifier],
+        context: NSManagedObjectContext? = nil
+    ) {
+        let context = context ?? self.context
+        let request = MangaUpdateObject.fetchRequest()
+
+        var predicates: [NSPredicate] = []
+        for update in updates {
+            predicates.append(NSPredicate(
+                format: "sourceId == %@ AND chapterId == %@ AND mangaId == %@",
+                update.sourceKey, update.chapterKey, update.mangaKey
+            ))
+        }
+        request.predicate = NSCompoundPredicate(orPredicateWithSubpredicates: predicates)
+
+        if let fetchedUpdates = try? context.fetch(request) {
+            for update in fetchedUpdates {
+                context.delete(update)
+            }
+        }
     }
 
     /// Gets all unviewed updates of a manga

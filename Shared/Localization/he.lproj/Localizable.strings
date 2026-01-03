@@ -26,7 +26,6 @@
 "ADD_TO_LIBRARY" = "הוסף לספרייה";
 "REMOVE_FROM_LIBRARY" = "הסר מהספרייה";
 "MANGA_INFO" = "מידע על המנגה";
-"LIBRARY_ADD_FROM_BROWSE" = "הוסף מנגה מלשונית החיפוש";
 "SORT_BY" = "סדר לפי";
 "FILTER_BY" = "סנן לפי";
 "TITLE" = "כותרת";
@@ -42,11 +41,9 @@
 "EDIT_CATEGORIES" = "ערוך קטגוריות";
 "CATEGORY_ADD" = "הוסף קטגוריה";
 "CATEGORY_ADD_TEXT" = "נא להכניס את הכותרת של הקטגוריה החדשה.";
-"CATEGORY_TITLE" = "כותרת הקטגוריה";
 "DEFAULT_CATEGORY" = "קטגוריית ברירת-מחדל";
 "ALWAYS_ASK" = "תמיד תשאל";
 "BROWSE_NO_SOURCES" = "אין מקורות";
-"BROWSE_NO_SOURCES_TEXT" = "הגדר את רשימת המקורות או פתח\nמקור ב- Aidoku על מנת להתחיל";
 "ADDING_SOURCES_GUIDE_BUTTON" = "מדריך הוספת מקורות";
 "UPDATES" = "עדכונים";
 "LIST_HEADER" = "רשימה";
@@ -164,7 +161,6 @@
 "SOURCE_ORDER" = "סדר מקורות";
 "UPDATE_INTERVAL" = "השהיית עדכון";
 "OPEN_READER_VIEW" = "פתח תצוגת קורא";
-"PIN_MANGA_UPDATED" = "עודכן";
 "LIBRARY_UPDATING" = "ספריה מתעדכנת";
 "RESTORE_BACKUP" = "לשחזר לעדכון הזה?";
 "SOURCE_LISTS" = "רשימת מקורות";
@@ -180,7 +176,7 @@
 "MISSING_SOURCES" = "מקורות חסרים";
 "UNREAD_CHAPTER_BADGES" = "תגי פרקים שלא נקראו";
 "COVER" = "כריכה";
-"PIN_MANGA_UNREAD" = "לא נקרא";
+"PIN_UNREAD" = "לא נקרא";
 "SKIP_TITLES" = "דלג על";
 "REFRESH_METADATA" = "רענן מחדש את מטא הנתונים";
 "NEVER" = "אף פעם";
@@ -263,7 +259,6 @@
 "RENAME_CATEGORY_FAIL" = "שינוי שם הקטגוריה נכשל";
 "SKIP_DUPLICATE_CHAPTERS" = "דלג על פרקים כפולים";
 "CATEGORY_NAME" = "שם קטגוריה";
-"SYNC_WITH_TRACKER" = "סנכרון עם העוקב";
 "MIGRATE_SOURCES" = "העברת מקורות";
 "MIGRATE" = "העברה";
 "MIGRATION" = "העברה";
@@ -286,15 +281,12 @@
 "CATEGORY_LOCKED" = "הקטגוריה נעולה.";
 "NOT_PUBLISHED" = "לא יצא לאור";
 "TYPE_COLON_%@" = "סוג: %@";
-"SYNC_WITH_TRACKER_INFO" = "נראה שהפרק האחרון שהוגדר במעקב (%g) גבוה יותר מהפרק האחרון שנקרא. האם תרצה לעדכן את ההיסטוריה המקומית שלך כך שתתאים?";
 "RENAME_CATEGORY_FAIL_INFO" = "שמות קטגוריה חייבים להיות מיוחדים.";
 "MIGRATE_%i_ITEMS?" = "להעביר %i פריטים?";
 "MIGRATE_ONE_ITEM?" = "להעביר פריט אחד?";
 "ALL_CHAPTERS_READ" = "כל הפרקים נקראו";
 "UPLOAD_DATE" = "תאריך העלאה";
-"TRACKING" = "מעקב";
-"PIN_MANGA" = "להצמיד מאנגה";
-"PIN_MANGA_TYPE" = "סוג הצמדה";
+"IS_TRACKING" = "מעקב";
 "EVERY_12_HOURS" = "כל 12 שעות";
 "DAILY" = "יום-יומי";
 "EVERY_2_DAYS" = "כל 2 ימים";
@@ -304,3 +296,9 @@
 "THAT_HAVENT_BEEN_READ" = "שלא נקראו";
 "LOGOUT_FROM_%@" = "להתנתק מ %@?";
 "CLEAR_TRACKED_MANGA_TEXT" = "פעולה זו היא בלתי הפיכה. המעקב אחר כל העוקבים שנוספו למאנגה יוסר.";
+"DONE" = "הסתיים";
+"INVALID" = "לא תקין";
+"PAUSE" = "הפסק";
+"RESUME" = "חדש";
+"COPY" = "העתק";
+"WARNING" = "אזהרה";

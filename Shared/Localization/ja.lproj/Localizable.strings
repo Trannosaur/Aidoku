@@ -9,7 +9,6 @@
 "LIBRARY" = "ライブラリ";
 "LIBRARY_SEARCH" = "ライブラリ検索";
 "LIBRARY_EMPTY" = "ライブラリの中には本がありません";
-"LIBRARY_ADD_FROM_BROWSE" = "ブラウズから漫画を追加";
 "BROWSE" = "ブラウズ";
 "INSTALLED" = "インストール済のソース";
 "VERSION" = "バージョン";
@@ -81,11 +80,9 @@
 "EDIT_CATEGORIES" = "本棚を編集";
 "CATEGORY_ADD" = "本棚を新規作成";
 "CATEGORY_ADD_TEXT" = "新たな本棚の名称を入力。";
-"CATEGORY_TITLE" = "本棚名";
 "DEFAULT_CATEGORY" = "デフォルトの本棚";
 "ALWAYS_ASK" = "常に尋ねる";
 "BROWSE_NO_SOURCES" = "ソースなし";
-"BROWSE_NO_SOURCES_TEXT" = "開始するには、ソースリストを設定するか、\nAidokuでソースを開いてください";
 "ADDING_SOURCES_GUIDE_BUTTON" = "ソース追加ガイド";
 "UPDATES" = "更新";
 "EXTERNAL" = "外部ソース";
@@ -165,9 +162,7 @@
 "MANGA_PER_ROW" = "一行に表示されるタイトルの数";
 "UNREAD_CHAPTER_BADGES" = "未読通知ドット";
 "READER" = "リーダー";
-"PIN_MANGA" = "漫画をトップに固定";
-"PIN_MANGA_UNREAD" = "未読";
-"PIN_MANGA_UPDATED" = "更新済み";
+"PIN_UNREAD" = "未読";
 "LIBRARY_UPDATING" = "ライブラリ更新";
 "ONLY_UPDATE_ON_WIFI" = "Wi-Fiでのみ更新する";
 "UPDATE_INTERVAL" = "更新間隔";
@@ -196,7 +191,6 @@
 "EVERY_12_HOURS" = "12時間ごと";
 "EVERY_2_DAYS" = "2日ごと";
 "SOURCE_LIST_URL" = "ソースリスト URL";
-"SHOW_NSFW_SOURCES" = "NSFW ソースを表示";
 "SOURCE_LIST_ADDED_TEXT" = "ブラウザタブで外部ソースを参照できるようになりました。";
 "SOURCE_LIST_ADD" = "ソースリスト追加";
 "SOURCE_LIST_ADD_TEXT" = "ソースリストのURLを入力";
@@ -205,7 +199,6 @@
 "OPEN_READER_VIEW" = "リーダービューを開く";
 "MARK_READ" = "既読にする";
 "VOL_SPACE_X" = "%g巻";
-"PIN_MANGA_TYPE" = "固定の漫画";
 "EXCLUDED_CATEGORIES" = "除外された本棚";
 "AUTH_FOR_LIBRARY" = "ライブラリを表示するために認証してください。";
 "LOCK_LIBRARY" = "ライブラリをロックする";
@@ -223,7 +216,7 @@
 "LOCKED_CATEGORIES" = "ロックされた本棚";
 "LIBRARY_LOCKED" = "ライブラリはロックされています。";
 "CATEGORY_LOCKED" = "本棚はロックされています。";
-"TRACKING" = "追跡";
+"IS_TRACKING" = "追跡";
 "SET_AS_WIDE_PAGE" = "ワイドページにする";
 "AUTOMATIC" = "自動";
 "SET_AS_NORMAL_PAGE" = "通常ページにする";
@@ -302,8 +295,6 @@
 "CACHE_SIZE_%@" = "キャッシュサイズ：%@";
 "1_CHAPTER" = "1章";
 "RENAME_CATEGORY_FAIL_INFO" = "本棚名は一意である必要があります。";
-"SYNC_WITH_TRACKER" = "トラッカーと同期する";
-"SYNC_WITH_TRACKER_INFO" = "トラッカーに設定された最新の章（%g）が、あなたが最後に読んだ章よりも高いようです。一致させるためにローカルの履歴を更新しますか？";
 "OPTIONS" = "オプション";
 "MIGRATE" = "移行";
 "MIGRATION" = "移行";
@@ -327,11 +318,7 @@
 "PIN" = "ピン留め";
 "UNPIN" = "ピン留めを解除";
 "CROP_BORDERS" = "クロップボーダー";
-"ANILIST_LOGIN_NEEDED" = "AniListへのログインが必要です";
 "BACKUP_ERROR" = "バックアップ復元エラー";
-"ANILIST_LOGIN_NEEDED_TEXT" = "AniListトークンの有効期限が切れたため、設定で再ログインするまでAniListトラッカーは動作しません。";
-"MAL_LOGIN_NEEDED" = "MyAnimeListへのログインが必要です";
-"MAL_LOGIN_NEEDED_TEXT" = "MyAnimeListトークンの有効期限が切れたため、設定で再ログインするまでMyAnimeListトラッカーは動作しません。";
 "BACKUP_ERROR_TEXT" = "復元中にエラーが発生しました：％@。 バックアップが利用不可かもしれません。";
 "PAUSE" = "一時停止";
 "RESUME" = "再生";
@@ -376,9 +363,8 @@
 "UNKNOWN_ERROR" = "不明なエラー";
 "ADD_SOURCE" = "ソースを追加する";
 "IMPORT_SOURCE" = "ソースをインポートする";
-"LOCAL_SOURCE" = "ローカルソース";
-"LOCAL_SOURCE_INFO" = "ローカルソースを使って愛読から直接ライブラリーをアップロードして管理することができます。";
-"LOCAL_SOURCE_SETUP" = "ローカルソースの設定";
+"LOCAL_FILES_INFO" = "ローカルファイルのソースを使って愛読から直接ライブラリーをアップロードして管理することができます。";
+"LOCAL_FILES_SETUP" = "ローカルファイルの設定";
 "LOCAL_FILES" = "ローカルファイル";
 "LOCAL_FILES_TAGLINE" = "ローカルファイルから読む";
 "IMPORT" = "インポート";

@@ -17,7 +17,7 @@
 "UPDATES" = "Uppdateringar";
 "DOWNLOAD_QUEUE" = "Nedladdningskö";
 "LAST_READ" = "Senast läst";
-"PIN_MANGA_UNREAD" = "Oläst";
+"PIN_UNREAD" = "Oläst";
 "SOURCE_LIST_ADD" = "Lägg till källista";
 "READ" = "Läst";
 "ONESHOT" = "One-shot";
@@ -46,7 +46,6 @@
 "RESET_SETTINGS_TEXT" = "Denna handling är oåterkallelig. Alla app- och källinställningar kommer att återställas.";
 "NO_CHAPTERS_AVAILABLE" = "Inga kapitel finns tillgängliga";
 "EXTERNAL" = "Extern";
-"SHOW_NSFW_SOURCES" = "Visa NSFW-källor";
 "UPLOAD_DATE" = "Uppladdningsdatum";
 "SOURCE_LIST_ADD_FAIL" = "Kunde ej lägga till källistan";
 "1_CHAPTER" = "1 kapitel";
@@ -80,7 +79,7 @@
 "%@_AGO" = "%@ sen";
 "SHARE" = "Dela";
 "INCOGNITO_MODE" = "Inkognitoläge";
-"TRACKING" = "Spårning";
+"IS_TRACKING" = "Spårning";
 "LAST_UPDATED" = "Senast uppdaterad";
 "RESTORE_BACKUP" = "Återställ till denna säkerhetskopia?";
 "FAILED_CHAPTER_LOAD" = "Kunde ej ladda kapitlet";
@@ -133,7 +132,6 @@
 "FAILED_CHAPTER_LOAD_INFO" = "Du tycks vara offline eller så har källan problem.";
 "LOGOUT" = "Logga ut";
 "PILLARBOX" = "Svarta fält";
-"PIN_MANGA_TYPE" = "Fästningstyp";
 "UPCOMING" = "Kommande";
 "EVERY_12_HOURS" = "Var tolfte timme";
 "LAST_OPENED" = "Senast öppnad";
@@ -152,7 +150,6 @@
 "CURRENT_COLON" = "Nuvarande:";
 "AUTH_TO_DISABLE" = "Autentisera för att avaktivera.";
 "GITHUB_REPO" = "Github-förråd";
-"SYNC_WITH_TRACKER_INFO" = "Det verkar som att det senaste kapitlet i spåraren (%g) är högre än ditt senast lästa kapitel. Vill du uppdatera din lokala historik för att matcha?";
 "RENAME_CATEGORY_FAIL" = "Kunde ej döpa om kategorin";
 "PAGE_X" = "Sida %i";
 "DOWNLOADED" = "Nedladdad";
@@ -164,7 +161,6 @@
 "ALL_CHAPTERS_READ" = "Alla kapitel är lästa";
 "ADD_TO_CATEGORY" = "Lägg till i kategori";
 "LTR" = "Vänster till höger";
-"BROWSE_NO_SOURCES_TEXT" = "Konfigurera din källista eller öppna en\nkälla i Aidoku för att komma igång";
 "NOT_PUBLISHED" = "Ej publicerad";
 "CORRUPTED_BACKUP_TEXT" = "Denna säkerhetskopia tycks ha felkonfigurerad data. Ej möjligt att döpa om.";
 "SOURCE_LIST_ADDED" = "Källista tillagd";
@@ -200,11 +196,9 @@
 "MULTI_LANGUAGE" = "Flerspråkig";
 "LIST_HEADER" = "Lista";
 "TOTAL_CHAPTERS" = "Antal kapitel";
-"PIN_MANGA" = "Fäst manga";
 "MORE" = "mer";
 "REMOVE_DOWNLOAD" = "Ta bort nedladdning";
 "%i_PAGES_LEFT" = "%i sidor kvar";
-"CATEGORY_TITLE" = "Titel för kategori";
 "LANGUAGES" = "Språk";
 "VOL_X" = "Vol.%g";
 "LOGGING" = "Loggande";
@@ -243,7 +237,6 @@
 "CANCEL_DOWNLOAD" = "Avbryt nedladdning";
 "MANGA_INFO" = "Mangainformation";
 "BACKUPS" = "Säkerhetskopior";
-"LIBRARY_ADD_FROM_BROWSE" = "Lägg till manga från upptäck-fliken";
 
 // Settings
 "SETTINGS" = "Inställningar";
@@ -305,11 +298,9 @@
 "START_READING" = "Börja läsa";
 "LIBRARY_EMPTY" = "Tomt bibliotek";
 "MISSING_SOURCE_TEXT" = "Den ursprungliga källan tycks saknas för denna manga. Ladda ned igen eller ta bort denna titel från ditt bibliotek.";
-"SYNC_WITH_TRACKER" = "Synkronisera med spårare";
 "VERSION" = "Version";
 "EXPORT" = "Exportera";
 "CLEAR_TRACKED_MANGA_TEXT" = "Denna handling är oåterkallelig. Spårning för alla spårare tillagda i manga kommer att tas bort.";
-"PIN_MANGA_UPDATED" = "Uppdaterad";
 "ONGOING" = "Pågående";
 "START_MATCHING" = "Börja matcha";
 "VOL_SPACE_X" = "Vol. %g";
@@ -327,8 +318,6 @@
 "LIST_ALL" = "Alla";
 "ADDING_SOURCES_GUIDE_BUTTON" = "Lägger till källguide";
 "COPY" = "Kopiera";
-"ANILIST_LOGIN_NEEDED" = "AniList inloggning krävs";
-"ANILIST_LOGIN_NEEDED_TEXT" = "Din AniList-token har gått ut, därmed kommer AniList att sluta fungera tills du loggar in igen i inställningarna.";
 "WARNING" = "Varning";
 "NO_WIFI_ALERT_TITLE" = "Inget Wi-Fi";
 "PAUSE" = "Paus";
@@ -375,9 +364,8 @@
 "NO_AVAILABLE_SOURCES_INFO" = "Justera dina filter för att kunna se fler externa källor.";
 "ALL_SOURCES_INSTALLED" = "Alla installerade källor";
 "ALL_SOURCES_INSTALLED_INFO" = "Det finns inga fler externa källor att installera.";
-"LOCAL_SOURCE" = "Lokal källa";
-"LOCAL_SOURCE_INFO" = "Den lokala källan låter dig ladda upp och hantera ditt egna bibliotek inom Aidoku.";
-"LOCAL_SOURCE_SETUP" = "Konfigurera lokal källa";
+"LOCAL_FILES_INFO" = "Den lokala källan låter dig ladda upp och hantera ditt egna bibliotek inom Aidoku.";
+"LOCAL_FILES_SETUP" = "Konfigurera lokal källa";
 "LOCAL_FILES" = "Lokala filer";
 "LOCAL_FILES_TAGLINE" = "Läs från lokala filer";
 "IMPORT" = "Importera";
@@ -491,8 +479,6 @@
 "SOURCE_BREAKING_CHANGE" = "Källbrytande förändring";
 "SOURCE_BREAKING_CHANGE_TEXT" = "Denna källa har uppdaterats på ett sätt som kräver migrering för att behålla bibliotek och historik.";
 "ALL_CHAPTERS_LOCKED" = "Alla kapitel är låsta";
-"MAL_LOGIN_NEEDED" = "MyAnimeList-inloggning krävs";
-"MAL_LOGIN_NEEDED_TEXT" = "Din MyAnimeList-token har gått ut, därmed kommer MyAnimeList att sluta fungera tills du loggar in igen i inställningarna.";
 "BACKUP_ERROR" = "Backup-återställningsfel";
 "BACKUP_ERROR_TEXT" = "Ett fel uppstod under återställning: %@. Backupen kan vara korrupt.";
 "READER_ORIENTATION" = "Riktning";

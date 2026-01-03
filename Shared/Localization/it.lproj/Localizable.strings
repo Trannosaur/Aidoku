@@ -27,7 +27,6 @@
 "REMOVE_DOWNLOAD" = "Rimuovi lo scaricamento";
 "REMOVE_DOWNLOADS" = "Rimuovi gli scaricamenti";
 "REMOVE_ALL_DOWNLOADS" = "Rimuovi tutti gli scaricamenti";
-"LIBRARY_ADD_FROM_BROWSE" = "Aggiungi manga dalla scheda Sfoglia";
 "REMOVE_FROM_LIBRARY" = "Rimuovi dalla Raccolta";
 "ADD_TO_LIBRARY" = "Aggiungi alla Raccolta";
 "MANGA_INFO" = "Informazioni sul manga";
@@ -38,7 +37,6 @@
 "EDIT_CATEGORIES" = "Modifica Categorie";
 "CATEGORY_ADD" = "Aggiungi Categoria";
 "CATEGORY_ADD_TEXT" = "Inserisci il titolo della nuova categoria da creare.";
-"CATEGORY_TITLE" = "Titolo Categoria";
 "DEFAULT_CATEGORY" = "Categoria predefinita";
 "SOURCE_ORDER" = "Ordine delle fonti";
 "MARK_READ" = "Contrassegna come letto";
@@ -72,7 +70,6 @@
 "NONE" = "Nessuno";
 "CATEGORIES" = "Categorie";
 "ALWAYS_ASK" = "Chiedi sempre";
-"BROWSE_NO_SOURCES_TEXT" = "Configura l'elenco delle fonti o apri una fonte\nin Aidoku per iniziare";
 "ADDING_SOURCES_GUIDE_BUTTON" = "Guida all'aggiunta di fonti";
 "UPDATES" = "Aggiornamenti";
 "BUTTON_UPDATE" = "AGGIORNA";
@@ -154,13 +151,11 @@
 "READER" = "Lettore";
 "OPEN_READER_VIEW" = "Apri la vista del lettore";
 "UNREAD_CHAPTER_BADGES" = "Badge dei capitoli non letti";
-"PIN_MANGA_UPDATED" = "Aggiornato";
 "ONLY_UPDATE_ON_WIFI" = "Aggiornamento solo su Wi-Fi";
 "EXCLUDED_CATEGORIES" = "Categorie escluse";
 "SOURCE_LISTS" = "Elenchi delle fonti";
 "SOURCE_LIST_ADDED" = "Elenco fonti aggiunto";
 "SOURCE_LIST_ADDED_TEXT" = "È ora possibile sfogliare le fonti esterne nella scheda Sfoglia.";
-"SHOW_NSFW_SOURCES" = "Mostra fonti per adulti";
 "SOURCE_LIST_URL" = "URL dell'elenco delle fonti";
 "SOURCE_LIST_ADD" = "Aggiungi elenco fonti";
 "SOURCE_LIST_ADD_TEXT" = "Immetti l'URL dell'elenco delle fonti";
@@ -205,7 +200,7 @@
 "VIEW_HISTORY" = "Visualizza la cronologia";
 "UPDATE_INTERVAL" = "Frequenza di aggiornamento";
 "SKIP_TITLES" = "Salta i titoli";
-"PIN_MANGA_UNREAD" = "Non letto";
+"PIN_UNREAD" = "Non letto";
 "REFRESH_METADATA" = "Aggiorna i metadati";
 "EVERY_12_HOURS" = "Ogni 12 ore";
 "WEEKLY" = "Settimanale";
@@ -244,8 +239,6 @@
 "VOL_SPACE_X" = "Vol. %g";
 "PORTRAIT" = "Verticale";
 "LANDSCAPE" = "Orizzontale";
-"PIN_MANGA" = "Manga in evidenza";
-"PIN_MANGA_TYPE" = "In evidenza come";
 "UNREAD_CHAPTERS" = "Capitoli non letti";
 "FAILED_CHAPTER_LOAD_INFO" = "Potresti essere offline o la fonte potrebbe avere dei problemi.";
 "RELOAD" = "Ricarica";
@@ -313,10 +306,8 @@
 "1_CHAPTER" = "1 Capitolo";
 "%i_CHAPTERS" = "%i Capitoli";
 "RENAME_CATEGORY_FAIL_INFO" = "I nomi delle categorie devono essere unici.";
-"SYNC_WITH_TRACKER" = "Sincronizza con i tracker";
-"SYNC_WITH_TRACKER_INFO" = "Sembra che l'ultimo capitolo presente nel tracker sia più recente del capitolo che hai letto. Vuoi correggere la tua cronologia di lettura?";
 "ALL_CHAPTERS_READ" = "Tutti i capitoli letti";
-"TRACKING" = "Tracciamento";
+"IS_TRACKING" = "Tracciamento";
 "DEFAULT_READING_MODE" = "Modalità di lettura predefinita";
 "PILLARBOX" = "Pillarbox";
 "PILLARBOX_AMOUNT" = "Totale Pillarbox";
@@ -329,13 +320,9 @@
 "REORDER" = "Riordina";
 "PIN" = "Fissa";
 "UNPIN" = "Rimuovi";
-"ANILIST_LOGIN_NEEDED" = "Login AniList necessario";
-"ANILIST_LOGIN_NEEDED_TEXT" = "Il token di AniList è scaduto, il tracker di AniList non funzionerà finché non si ri-accede dalle impostazioni.";
-"MAL_LOGIN_NEEDED" = "Login MyAnimeList necessario";
 "NO_WIFI_ALERT_MESSAGE" = "Devi essere connesso al Wi-Fi per scaricare questo contenuto. Connettiti prima al Wi-Fi e riprova.";
 "READER_BG_COLOR_SYSTEM" = "Sistema";
 "READER_BG_COLOR_WHITE" = "Bianco";
-"MAL_LOGIN_NEEDED_TEXT" = "Il token di MyAnimeList è scaduto, il tracker di MyAnimeList non funzionerà finché non si ri-accede dalle impostazioni.";
 "BACKUP_ERROR" = "Errore Ripristino Backup";
 "PAUSE" = "Pausa";
 "RESUME" = "Riprendi";
